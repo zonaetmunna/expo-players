@@ -1,31 +1,26 @@
-import { Icon } from '@roninoss/icons';
 import { StatusBar } from 'expo-status-bar';
-import { Linking, Platform, View } from 'react-native';
+import { Linking, Platform, Text, View } from 'react-native';
 
-import { Text } from '@/components/nativewindui/Text';
 import { useColorScheme } from '@/lib/useColorScheme';
 
 export default function ModalScreen() {
-  const { colors, colorScheme } = useColorScheme();
+  const { colorScheme } = useColorScheme();
   return (
     <>
       <StatusBar
         style={Platform.OS === 'ios' ? 'light' : colorScheme === 'dark' ? 'light' : 'dark'}
       />
-      <View className="flex-1 items-center justify-center gap-1 px-12">
-        <Icon name="file-plus-outline" size={42} color={colors.grey} />
-        <Text variant="title3" className="pb-1 text-center font-semibold">
-          NativewindUI
-        </Text>
-        <Text color="tertiary" variant="subhead" className="pb-4 text-center">
-          You can install any of the free components from the{' '}
+      <View className="flex-1 items-center justify-center gap-2 bg-background px-12">
+        <Text className="pb-1 text-center text-xl font-semibold text-foreground">Settings</Text>
+        <Text className="pb-4 text-center text-sm text-muted-foreground">
+          Use the toggle in the header to switch theme. More settings coming with later rounds —
+          see{' '}
           <Text
-            onPress={() => Linking.openURL('https://nativewindui.com')}
-            variant="subhead"
-            className="text-primary">
-            NativewindUI
+            className="text-primary"
+            onPress={() => Linking.openURL('https://docs.expo.dev/versions/latest/sdk/video/')}>
+            expo-video docs
           </Text>
-          {' website.'}
+          {' for the player API reference.'}
         </Text>
       </View>
     </>

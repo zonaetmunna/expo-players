@@ -8,19 +8,20 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: 'black',
+       
       }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          title: 'Videos',
+          tabBarIcon: ({ color }) => <TabBarIcon name="video-camera" color={color} />,
         }}
       />
       <Tabs.Screen
         name="two"
         options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          title: 'Audio',
+          tabBarIcon: ({ color }) => <TabBarIcon name="music" color={color} />,
         }}
       />
     </Tabs>

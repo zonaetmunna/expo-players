@@ -22,7 +22,8 @@
           "supportsBackgroundPlayback": true,
           "supportsPictureInPicture": true
         }
-      ]
+      ],
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -46,6 +47,17 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ],
+      "package": "com.zonaetmonna.expoplayers"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "bbf9e286-99c0-44f6-86bd-55b9f830aa53"
       }
     }
   }
