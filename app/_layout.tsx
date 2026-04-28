@@ -9,6 +9,7 @@ import { setAudioModeAsync } from 'expo-audio';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 
 import { ThemeToggle } from '@/components/nativewindui/ThemeToggle';
@@ -39,8 +40,7 @@ export default function RootLayout() {
         key={`root-status-bar-${isDarkColorScheme ? 'light' : 'dark'}`}
         style={isDarkColorScheme ? 'light' : 'dark'}
       />
-      {/* WRAP YOUR APP WITH ANY ADDITIONAL PROVIDERS HERE */}
-      {/* <ExampleProvider> */}
+      <GestureHandlerRootView style={{ flex: 1 }}>
         <ActionSheetProvider>
           <NavThemeProvider value={NAV_THEME[colorScheme]}>
             <Stack screenOptions={SCREEN_OPTIONS}>
@@ -50,8 +50,8 @@ export default function RootLayout() {
               <Stack.Screen name="modal" options={MODAL_OPTIONS} />
             </Stack>
           </NavThemeProvider>
-        </ActionSheetProvider>   
-      {/* </ExampleProvider> */}
+        </ActionSheetProvider>
+      </GestureHandlerRootView>
     </>
   );
 }

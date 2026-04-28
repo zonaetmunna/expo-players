@@ -8,12 +8,12 @@
 
 | Status | Count | % |
 | --- | ---: | ---: |
-| ✅ **Done** — working in app today | **36** | 24% |
-| 🟡 **Ready to wire** — `expo-video` supports it, no UI yet | **27** | 18% |
-| 🔨 **To build** — custom code needed | **65** | 44% |
+| ✅ **Done** — working in app today | **42** | 28% |
+| 🟡 **Ready to wire** — `expo-video` supports it, no UI yet | **26** | 17% |
+| 🔨 **To build** — custom code needed | **59** | 40% |
 | 📦 **Needs library** — extra install + native rebuild | **8** | 5% |
 | 🌐 **Needs backend** — server-side feature, not player | **6** | 4% |
-| 🚫 **Won't build** — not feasible on this stack | **7** | 5% |
+| 🚫 **Won't build** — not feasible on this stack | **9** | 6% |
 | **Total** | **149** | |
 
 ```text
@@ -86,7 +86,7 @@ We ship in rounds. Pick one, build it, update boxes here, move on.
 | 🔨 | Low-latency mode | custom | needs `bufferOptions` tuning |
 | 🔨 | DVR (rewind live) | custom | scrubber needs DVR window |
 | ✅ | Adaptive bitrate (ABR) | expo-video | automatic |
-| 🟡 | Manual quality selection | expo-video | tracks ready, no picker |
+| 🚫 | Manual quality selection | n/a | `expo-video` exposes `availableVideoTracks` but `videoTrack` is **readonly** — no API to set it. ABR is forced automatic. Would need switching to `react-native-video` to enable. |
 | ✅ | Codec H.264 | expo-video | OS decoder |
 | ✅ | Codec H.265 / HEVC | expo-video | OS decoder |
 | ✅ | Codec VP9 | expo-video | OS decoder (Android) |
@@ -119,13 +119,13 @@ We ship in rounds. Pick one, build it, update boxes here, move on.
 
 | Status | Feature | Source | Notes |
 |:-:|---|---|---|
-| 🔨 | Double-tap left/right → seek ±10s | custom | needs custom overlay |
-| 🔨 | Vertical swipe right → volume | custom | + system volume API |
-| 🔨 | Vertical swipe left → brightness | custom | needs `expo-brightness` |
-| 🔨 | Horizontal swipe → seek | custom | |
-| 🔨 | Pinch to zoom | custom | toggles `contentFit` |
-| 🔨 | Tap to show / hide controls | custom | requires custom controls first |
-| 🔨 | Long-press → temporary 2x speed | custom | |
+| ✅ | Double-tap left/right → seek ±10s | custom | `useDoubleTapSeek` → `components/player/video/hooks/` |
+| ✅ | Vertical swipe right → volume | custom | `useSwipeVolume` — sets `player.volume` |
+| ✅ | Vertical swipe left → brightness | custom | `useSwipeBrightness` — uses `expo-brightness` |
+| ✅ | Horizontal swipe → seek | custom | `useSwipeSeek` — preview HUD + `player.currentTime` |
+| ✅ | Pinch to zoom | custom | `usePinchZoom` — toggles `contentFit` contain↔cover |
+| 🚫 | Tap to show / hide controls | n/a | native controls own single-tap behavior; would need `nativeControls={false}` + Round 4 custom overlay |
+| ✅ | Long-press → temporary 2x speed | custom | `useLongPressSpeed` — sets `playbackRate=2` |
 
 ---
 
@@ -392,4 +392,4 @@ New features go under `app/test/<feature>.tsx` so each is isolated. The main det
 
 > Add an entry whenever we explicitly decide NOT to build something.
 
-*(none yet)*
+- **2026-04-28** — Manual resolution/quality selection: `expo-video` exposes `availableVideoTracks` but `videoTrack` is `readonly`. No way to set it. ABR is forced automatic. Speed / audio / subtitle pickers built instead — those are writable. Would need switching to `react-native-video` to enable manual quality.

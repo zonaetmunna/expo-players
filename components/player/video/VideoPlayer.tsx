@@ -1,8 +1,10 @@
 import { useEvent } from 'expo';
 import { VideoView, useVideoPlayer, type VideoContentFit } from 'expo-video';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 
+import { PlayerGestures } from './PlayerGestures';
+import { usePlayerSnapshot } from './hooks/usePlayerSnapshot';
 import type { VideoItem } from './types';
 
 type Props = {
@@ -14,6 +16,7 @@ type Props = {
   fullscreenEnabled?: boolean;
   allowsPictureInPicture?: boolean;
   contentFit?: VideoContentFit;
+  gesturesEnabled?: boolean;
   style?: ViewStyle;
   onPlayingChange?: (isPlaying: boolean) => void;
   onStatusChange?: (status: string) => void;
@@ -28,6 +31,7 @@ export function VideoPlayer({
   fullscreenEnabled = true,
   allowsPictureInPicture = true,
   contentFit = 'contain',
+  gesturesEnabled = true,
   style,
   onPlayingChange,
   onStatusChange,
@@ -59,6 +63,15 @@ export function VideoPlayer({
   const { isPlaying } = useEvent(player, 'playingChange', { isPlaying: player.playing });
   const { status } = useEvent(player, 'statusChange', { status: player.status });
 
+  const snapshot = usePlayerSnapshot(player);
+
+  const [fit, setFit] = useState<VideoContentFit>(contentFit);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    setFit(contentFit);
+  }, [contentFit]);
+
   useEffect(() => {
     onPlayingChange?.(isPlaying);
   }, [isPlaying, onPlayingChange]);
@@ -66,6 +79,17 @@ export function VideoPlayer({
   useEffect(() => {
     onStatusChange?.(status);
   }, [status, onStatusChange]);
+
+  // Fix D: ensure 2x boost from long-press is reset on unmount
+  useEffect(() => {
+    return () => {
+      try {
+        player.playbackRate = 1;
+      } catch {
+        // player may be released already
+      }
+    };
+  }, [player]);
 
   return (
     <View style={[styles.container, style]}>
@@ -75,7 +99,16 @@ export function VideoPlayer({
         nativeControls={nativeControls}
         fullscreenOptions={{ enable: fullscreenEnabled }}
         allowsPictureInPicture={allowsPictureInPicture}
-        contentFit={contentFit}
+        contentFit={fit}
+        onFullscreenEnter={() => setIsFullscreen(true)}
+        onFullscreenExit={() => setIsFullscreen(false)}
+      />
+      <PlayerGestures
+        player={player}
+        snapshot={snapshot}
+        contentFit={fit}
+        onContentFitChange={setFit}
+        enabled={gesturesEnabled && !isFullscreen}
       />
     </View>
   );
