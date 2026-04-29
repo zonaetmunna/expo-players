@@ -71,6 +71,13 @@ export default function RnvVideoDetailsScreen() {
                 </Text>
               </View>
             ) : null}
+            {video.ads ? (
+              <View className="rounded bg-amber-500 px-2 py-1">
+                <Text className="text-[11px] font-bold tracking-wide text-white">
+                  ADS · {video.ads.type.toUpperCase()}
+                </Text>
+              </View>
+            ) : null}
             {video.isLive ? (
               <View className="rounded bg-red-600 px-2 py-1">
                 <Text className="text-[11px] font-bold tracking-wide text-white">LIVE</Text>

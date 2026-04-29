@@ -38,6 +38,7 @@ export function YouTubeSkin(props: SkinProps) {
     hasError,
     errorMessage,
     isEnded = false,
+    isInAdBreak = false,
     rate,
     resizeMode,
     isFullscreen,
@@ -56,6 +57,18 @@ export function YouTubeSkin(props: SkinProps) {
   } = props;
 
   const ctrl = useSkinControlsState(props);
+
+  // IMA SDK draws skip / countdown / click-through during ad breaks. Hide our
+  // chrome so it doesn't paint over the IMA UI.
+  if (isInAdBreak) {
+    return (
+      <View pointerEvents="none" style={styles.adPillWrap}>
+        <View style={styles.adPill}>
+          <Text style={styles.adPillText}>Ad</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <>
@@ -323,4 +336,22 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   retryText: { color: '#fff', fontWeight: '800', fontSize: 13, letterSpacing: 1 },
+  adPillWrap: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    zIndex: 5,
+  },
+  adPill: {
+    backgroundColor: '#facc15',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 2,
+  },
+  adPillText: {
+    color: '#000',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
 });

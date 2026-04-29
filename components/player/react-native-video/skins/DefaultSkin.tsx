@@ -36,6 +36,7 @@ export function DefaultSkin(props: SkinProps) {
     hasError,
     errorMessage,
     isEnded = false,
+    isInAdBreak = false,
     rate,
     resizeMode,
     isFullscreen,
@@ -60,6 +61,19 @@ export function DefaultSkin(props: SkinProps) {
   const { colors } = useColorScheme();
   const accentColor = colors.primary;
   const retryColor = colors.primary;
+
+  // IMA renders its own skip / countdown / click-through chrome during ad
+  // breaks. Hide our skin entirely so we don't double up — only show a small
+  // "Ad" pill at the top so the user knows what's playing.
+  if (isInAdBreak) {
+    return (
+      <View pointerEvents="none" style={styles.adPillWrap}>
+        <View style={styles.adPill}>
+          <Text style={styles.adPillText}>Ad</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <>
@@ -341,4 +355,22 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   retryText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  adPillWrap: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    zIndex: 5,
+  },
+  adPill: {
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  adPillText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
 });

@@ -36,6 +36,12 @@ export type SkinProps = {
   /** Optional human-readable error message — shown by skins below the error icon. */
   errorMessage?: string | null;
   isEnded?: boolean;
+  /**
+   * True while IMA is rendering an ad (between CONTENT_PAUSE_REQUESTED and
+   * CONTENT_RESUME_REQUESTED). Skins should hide their own chrome — IMA renders
+   * its skip button / countdown / click-through natively over the surface.
+   */
+  isInAdBreak?: boolean;
   rate: number;
   resizeMode: ResizeMode;
   isFullscreen: boolean;

@@ -13,6 +13,7 @@ export const VIDEO_CATEGORIES: readonly Chip<VideoCategoryKey>[] = [
   { key: 'streaming', label: 'HLS / DASH', icon: 'cloud-outline' },
   { key: 'live', label: 'Live', icon: 'radio-outline' },
   { key: 'drm', label: 'DRM', icon: 'lock-closed-outline' },
+  { key: 'ads', label: 'IMA Ads', icon: 'megaphone-outline' },
   { key: 'codec-test', label: 'Codecs / HDR', icon: 'sparkles-outline' },
   { key: 'edge-case', label: 'Edge cases', icon: 'warning-outline' },
 ] as const;
@@ -22,9 +23,7 @@ export const VIDEOS: VideoItem[] = [
     id: 'rnv-bbb-mp4',
     title: 'Big Buck Bunny (H.264 MP4)',
     description: 'Universal H.264 baseline. Plays on every device + browser.',
-    poster:
-      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg',
-    uri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    uri: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_1MB.mp4',
     type: 'mp4',
     category: 'progressive',
     duration: 596,
@@ -40,12 +39,10 @@ export const VIDEOS: VideoItem[] = [
     license: 'Creative Commons (Blender Foundation)',
   },
   {
-    id: 'rnv-elephants-mp4',
-    title: 'Elephants Dream (H.264 MP4)',
-    description: 'Second Blender open-movie progressive sample.',
-    poster:
-      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ElephantsDream.jpg',
-    uri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+    id: 'rnv-jellyfish-mp4',
+    title: 'Jellyfish (H.264 MP4)',
+    description: 'Second progressive H.264 sample — useful for ABR comparison and codec tests.',
+    uri: 'https://test-videos.co.uk/vids/jellyfish/mp4/h264/720/Jellyfish_720_10s_5MB.mp4',
     type: 'mp4',
     category: 'progressive',
     duration: 653,
@@ -121,9 +118,7 @@ export const VIDEOS: VideoItem[] = [
     id: 'rnv-bbb-with-side-vtt',
     title: 'Big Buck Bunny + side-loaded VTT',
     description: 'MP4 with external VTT subtitle URL — exclusive to react-native-video.',
-    poster:
-      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg',
-    uri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    uri: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_1MB.mp4',
     type: 'mp4',
     category: 'progressive',
     duration: 596,
@@ -280,6 +275,142 @@ export const VIDEOS: VideoItem[] = [
       'Demo license server may be down — replace with your own FairPlay license server for real testing',
     ],
     source: 'Apple HLS reference + EZDRM demo cert',
+    license: 'Free for testing',
+  },
+  // ---------- IMA Ads samples ----------
+  // All ad tags below are Google IMA SDK public sample ad tags. They serve a
+  // small set of real test creatives (1-3 sec promos) with no impression
+  // tracking on the dev side. Safe to use in dev/test builds.
+  {
+    id: 'rnv-ads-preroll-single',
+    title: 'IMA Ads — Single Pre-roll (VAST Linear)',
+    description:
+      'Plain VAST tag returning a single linear pre-roll ad. Simplest IMA case.',
+    uri: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_1MB.mp4',
+    type: 'mp4',
+    category: 'ads',
+    duration: 596,
+    codecVideo: 'h264',
+    codecAudio: 'aac',
+    resolution: '720p',
+    ads: {
+      type: 'csai',
+      adTagUrl:
+        'https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/single_preroll_skippable&sz=640x480&ciu_szs=300x250%2C728x90&gdfp_req=1&output=vast&unviewed_position_start=1&env=vp&impl=s&correlator=',
+      adLanguage: 'en',
+    },
+    platforms: {
+      ios: { supported: true, minVersion: '11' },
+      android: { supported: true, minVersion: '5' },
+      web: { supported: false, note: 'IMA requires native SDK — content plays without ads on web' },
+    },
+    source: 'Google IMA SDK sample tags',
+    license: 'Free for testing',
+  },
+  {
+    id: 'rnv-ads-vmap-prepost',
+    title: 'IMA Ads — VMAP Pre + Mid + Post-roll',
+    description:
+      'VMAP playlist with cuepoints at start, 15s, and end. Tests full pre/mid/post lifecycle.',
+    uri: 'https://test-videos.co.uk/vids/jellyfish/mp4/h264/720/Jellyfish_720_10s_5MB.mp4',
+    type: 'mp4',
+    category: 'ads',
+    duration: 653,
+    codecVideo: 'h264',
+    codecAudio: 'aac',
+    resolution: '720p',
+    ads: {
+      type: 'csai',
+      adTagUrl:
+        'https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/vmap_ad_samples&sz=640x480&cust_params=sample_ar%3Dpremidpostpod&ciu_szs=300x250&gdfp_req=1&ad_rule=1&output=vmap&unviewed_position_start=1&env=vp&impl=s&cmsid=496&vid=short_onecue&correlator=',
+      adLanguage: 'en',
+    },
+    platforms: {
+      ios: { supported: true, minVersion: '11' },
+      android: { supported: true, minVersion: '5' },
+      web: { supported: false, note: 'IMA requires native SDK' },
+    },
+    knownIssues: ['Mid-roll fires at fixed offsets — not user-seekable'],
+    source: 'Google IMA SDK sample tags',
+    license: 'Free for testing',
+  },
+  {
+    id: 'rnv-ads-skippable',
+    title: 'IMA Ads — Skippable Linear',
+    description:
+      'VAST linear ad with skipoffset attribute. Tests the native Skip button after the offset elapses.',
+    uri: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_1MB.mp4',
+    type: 'mp4',
+    category: 'ads',
+    duration: 596,
+    codecVideo: 'h264',
+    codecAudio: 'aac',
+    resolution: '720p',
+    ads: {
+      type: 'csai',
+      adTagUrl:
+        'https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/single_ad_samples&sz=640x480&cust_params=sample_ct%3Dskippablelinear&ciu_szs=300x250%2C728x90&gdfp_req=1&output=vast&unviewed_position_start=1&env=vp&impl=s&correlator=',
+      adLanguage: 'en',
+    },
+    platforms: {
+      ios: { supported: true, minVersion: '11' },
+      android: { supported: true, minVersion: '5' },
+      web: { supported: false, note: 'IMA requires native SDK' },
+    },
+    source: 'Google IMA SDK sample tags',
+    license: 'Free for testing',
+  },
+  {
+    id: 'rnv-ads-pod',
+    title: 'IMA Ads — Ad Pod (multiple back-to-back)',
+    description:
+      'VMAP returning multiple linear ads in a single break. Tests ad-pod sequencing and per-ad events.',
+    uri: 'https://test-videos.co.uk/vids/sintel/mp4/h264/720/Sintel_720_10s_1MB.mp4',
+    type: 'mp4',
+    category: 'ads',
+    duration: 888,
+    codecVideo: 'h264',
+    codecAudio: 'aac',
+    resolution: '720p',
+    ads: {
+      type: 'csai',
+      adTagUrl:
+        'https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/vmap_ad_samples&sz=640x480&cust_params=sample_ar%3Dpreonly&ciu_szs=300x250&gdfp_req=1&ad_rule=1&output=vmap&unviewed_position_start=1&env=vp&impl=s&cmsid=496&vid=short_onecue&correlator=',
+      adLanguage: 'en',
+    },
+    platforms: {
+      ios: { supported: true, minVersion: '11' },
+      android: { supported: true, minVersion: '5' },
+      web: { supported: false, note: 'IMA requires native SDK' },
+    },
+    source: 'Google IMA SDK sample tags',
+    license: 'Free for testing',
+  },
+  {
+    id: 'rnv-ads-redirect',
+    title: 'IMA Ads — VAST Wrapper / Redirect',
+    description:
+      'Tests VAST wrapper resolution: ad server returns a redirect that resolves to the actual creative. Common in real ad-tech chains.',
+    uri: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_2MB.mp4',
+    type: 'mp4',
+    category: 'ads',
+    duration: 15,
+    codecVideo: 'h264',
+    codecAudio: 'aac',
+    resolution: '720p',
+    ads: {
+      type: 'csai',
+      adTagUrl:
+        'https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/single_ad_samples&sz=640x480&cust_params=sample_ct%3Dredirectlinear&ciu_szs=300x250%2C728x90&gdfp_req=1&output=vast&unviewed_position_start=1&env=vp&impl=s&correlator=',
+      adLanguage: 'en',
+    },
+    platforms: {
+      ios: { supported: true, minVersion: '11' },
+      android: { supported: true, minVersion: '5' },
+      web: { supported: false, note: 'IMA requires native SDK' },
+    },
+    knownIssues: ['Wrapper depth limited by IMA SDK (default 5 hops)'],
+    source: 'Google IMA SDK sample tags',
     license: 'Free for testing',
   },
   {

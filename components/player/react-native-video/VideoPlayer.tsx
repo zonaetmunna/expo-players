@@ -9,6 +9,7 @@ import Video, {
   type ISO639_1,
   type OnLoadData,
   type OnProgressData,
+  type OnReceiveAdEventData,
   type OnVideoErrorData,
   type SelectedTrack,
   type SelectedVideoTrack,
@@ -18,6 +19,14 @@ import Video, {
 import { CastIndicator } from './CastIndicator';
 import { CustomControls } from './CustomControls';
 import { PlayerGestures } from './PlayerGestures';
+import {
+  INITIAL_AD_STATE,
+  isAdsPlatformSupported,
+  mapAds,
+  reduceAdEvent,
+  validateAds,
+  type AdPlayerState,
+} from './ads';
 import { describeDrmError, isDrmSchemeSupported, mapDrm, validateDrm } from './drm';
 import { useCastSession } from './hooks/useCastSession';
 import { useRnvPlayerSnapshot } from './hooks/useRnvPlayerSnapshot';
@@ -130,6 +139,13 @@ export function VideoPlayer({
         return `${source.drm.type} DRM is not supported on this platform.`;
       }
     }
+    if (source.ads) {
+      const reason = validateAds(source.ads);
+      if (reason) return `Ads config error — ${reason}`;
+      if (!isAdsPlatformSupported()) {
+        return 'Ads (IMA SDK) are not supported on web. Content will play without ads.';
+      }
+    }
     return null;
   })();
 
@@ -141,6 +157,11 @@ export function VideoPlayer({
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [isEnded, setIsEnded] = useState(false);
+  // IMA ad state — driven by onReceiveAdEvent. The IMA SDK renders the actual
+  // ad UI (skip button, countdown, click-through) natively over the Video
+  // surface; we use this to hide our own controls during an ad break and to
+  // surface ad errors without breaking content playback.
+  const [adState, setAdState] = useState<AdPlayerState>(INITIAL_AD_STATE);
 
   // Mirror reactive state -> snapshot ref for gesture hooks (worklets read this safely on JS thread)
   useEffect(() => {
@@ -172,6 +193,7 @@ export function VideoPlayer({
     setError(null);
     setPaused(!autoPlay);
     setRate(1);
+    setAdState(INITIAL_AD_STATE);
   }, [source.id, autoPlay]);
 
   // Reset orientation + restore status bar on unmount
@@ -380,14 +402,35 @@ export function VideoPlayer({
     setState((s) => ({ ...s, volume }));
   };
 
+  // IMA ad-event router. The IMA SDK takes over the surface during ad breaks
+  // (CONTENT_PAUSE_REQUESTED → CONTENT_RESUME_REQUESTED) and renders its own
+  // skip / countdown / click-through chrome. We just track the state so our
+  // custom controls hide themselves while ads play.
+  const handleAdEvent = (e: OnReceiveAdEventData) => {
+    const eventName = e?.event ?? 'UNKNOWN';
+    // eslint-disable-next-line no-console
+    console.log('[rn-video] onReceiveAdEvent', eventName, e?.data);
+    setAdState((prev) => reduceAdEvent(prev, eventName, e?.data));
+  };
+
   // Memoize the source object so rn-video doesn't see a "new" prop every render
   // (which causes it to reload + rebuffer the stream).
-  const videoSource = useMemo(
-    () => ({
+  const videoSource = useMemo(() => {
+    const mappedAd = mapAds(source.ads);
+    if (source.ads) {
+      // eslint-disable-next-line no-console
+      console.log('[rn-video] ads config attached to source', {
+        title: source.title,
+        rawAds: source.ads,
+        mappedAd,
+      });
+    }
+    return {
       uri: source.uri,
       // Let rn-video auto-detect from the URL extension (.m3u8 / .mpd / .mp4).
       headers: source.drm?.headers,
       drm: mapDrm(source.drm),
+      ad: mappedAd,
       metadata: {
         title: source.title,
         description: source.description,
@@ -404,9 +447,8 @@ export function VideoPlayer({
               : ('application/x-subrip' as TextTrackType),
         uri: s.uri,
       })),
-    }),
-    [source]
-  );
+    };
+  }, [source]);
 
   const playerBody = (
     <View
@@ -451,6 +493,7 @@ export function VideoPlayer({
           onVolumeChange={handleVolumeChange}
           onEnd={handleEnd}
           onError={handleError}
+          onReceiveAdEvent={source.ads ? handleAdEvent : undefined}
         />
       </PlayerGestures>
 
@@ -474,6 +517,7 @@ export function VideoPlayer({
         isLive={!!source.isLive}
         hasError={!!error}
         errorMessage={error}
+        isInAdBreak={adState.inAdBreak}
         isEnded={isEnded}
         rate={rate}
         resizeMode={resizeMode}

@@ -30,7 +30,15 @@
         }
       ],
       "expo-audio",
-      "react-native-video",
+      [
+        "react-native-video",
+        {
+          "enableADSExtension": true,
+          "enableNotificationControls": true,
+          "enableAndroidPictureInPicture": true,
+          "enableBackgroundAudio": true
+        }
+      ],
       "expo-secure-store",
       "expo-sqlite"
     ],

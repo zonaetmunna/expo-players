@@ -38,6 +38,7 @@ export function NetflixSkin(props: SkinProps) {
     hasError,
     errorMessage,
     isEnded = false,
+    isInAdBreak = false,
     rate,
     resizeMode,
     isFullscreen,
@@ -56,6 +57,17 @@ export function NetflixSkin(props: SkinProps) {
   } = props;
 
   const ctrl = useSkinControlsState(props);
+
+  // IMA owns the surface during ad breaks — hide our chrome to avoid double-UI.
+  if (isInAdBreak) {
+    return (
+      <View pointerEvents="none" style={styles.adPillWrap}>
+        <View style={styles.adPill}>
+          <Text style={styles.adPillText}>Ad</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <>
@@ -380,4 +392,22 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   retryText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  adPillWrap: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    zIndex: 5,
+  },
+  adPill: {
+    backgroundColor: NETFLIX_RED,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  adPillText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
 });

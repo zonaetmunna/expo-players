@@ -8,6 +8,7 @@ export type VideoCategory =
   | 'streaming'
   | 'live'
   | 'drm'
+  | 'ads'
   | 'codec-test'
   | 'edge-case';
 
@@ -78,6 +79,49 @@ export type VideoDRM = {
   ) => string | Promise<string>;
 };
 
+/**
+ * IMA Ads configuration — maps to react-native-video's `source.ad` (AdConfig).
+ * Native IMA SDK is used on iOS + Android; web is unsupported.
+ *
+ * - **CSAI** (`type: 'csai'`) — client-side ad insertion via VAST/VMAP `adTagUrl`.
+ *   Covers pre-roll, mid-roll, post-roll, skippable linear, and ad pods. The IMA
+ *   SDK parses the response, renders ads in the same surface, and emits events
+ *   through the player's `onReceiveAdEvent` (CONTENT_PAUSE_REQUESTED, COMPLETED,
+ *   SKIPPED, ALL_ADS_COMPLETED, etc.).
+ * - **DAI** (`type: 'ssai'`) — Google DAI server-side stitching. Requires a
+ *   Google Ad Manager account and a content source/asset key. Stream is fetched
+ *   from Google's DAI servers, not the original `uri`.
+ *
+ * Pick CSAI for ad tag URLs (most common). Pick SSAI when your content is
+ * pre-stitched on Google's servers and you have a contentSourceId/videoId.
+ */
+export type VideoAdsCSAI = {
+  type: 'csai';
+  /** VAST or VMAP tag URL. VMAP supports VOD pre/mid/post-roll cuepoints. */
+  adTagUrl: string;
+  /** ISO 639-1 language code for the IMA UI (Skip button, countdown). */
+  adLanguage?: string;
+};
+
+export type VideoAdsDAI = {
+  type: 'ssai';
+  streamType: 'vod' | 'live';
+  format?: 'hls' | 'dash';
+  /** VOD only — Ad Manager content source ID */
+  contentSourceId?: string;
+  /** VOD only — video ID inside the content source */
+  videoId?: string;
+  /** Live only — DAI live stream asset key */
+  assetKey?: string;
+  /** Custom ad request parameters passed through to Google */
+  adTagParameters?: Record<string, string>;
+  /** Fallback content URI if the DAI stream fails */
+  fallbackUri?: string;
+  adLanguage?: string;
+};
+
+export type VideoAds = VideoAdsCSAI | VideoAdsDAI;
+
 export type SideLoadedSubtitle = {
   uri: string;
   title: string;
@@ -109,6 +153,8 @@ export type VideoItem = {
   type: VideoSourceType;
   duration?: number;
   drm?: VideoDRM;
+  /** Optional IMA Ads config — pre/mid/post-roll, skippable linear, ad pods. iOS + Android only. */
+  ads?: VideoAds;
   isLive?: boolean;
   /** Optional side-loaded subtitle URLs — rn-video supports these natively (expo-video does not). */
   subtitles?: SideLoadedSubtitle[];
