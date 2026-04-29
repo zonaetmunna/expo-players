@@ -267,6 +267,7 @@ export function VideoPlayer({
   const onSelectAudioTrack = (index: number | null) => {
     setState((s) => ({ ...s, selectedAudioTrack: index }));
   };
+
   const onSelectTextTrack = (index: number | null) => {
     setState((s) => ({ ...s, selectedTextTrack: index }));
   };
