@@ -24,6 +24,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <TabBarIcon name="music" color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="three"
+        options={{
+          title: 'RN-Video',
+          tabBarIcon: ({ color }) => <TabBarIcon name="film" color={color} />,
+        }}
+      />
     </Tabs>
   );
 }

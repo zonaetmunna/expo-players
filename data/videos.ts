@@ -1,4 +1,4 @@
-import type { VideoItem } from '@/components/player/video/types';
+import type { VideoItem } from '@/components/player/expo-video/types';
 
 export const VIDEOS: VideoItem[] = [
   {

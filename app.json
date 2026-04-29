@@ -29,7 +29,10 @@
           "supportsPictureInPicture": true
         }
       ],
-      "expo-audio"
+      "expo-audio",
+      "react-native-video",
+      "expo-secure-store",
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,

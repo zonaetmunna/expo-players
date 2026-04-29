@@ -5,8 +5,8 @@ import { Image, Pressable, Text, View } from 'react-native';
 
 import { CategoryChips } from '@/components/CategoryChips';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import type { VideoItem } from '@/components/player/expo-video/types';
-import { VIDEO_CATEGORIES, VIDEOS, type VideoCategoryKey } from '@/data/videos';
+import type { VideoItem } from '@/components/player/react-native-video/types';
+import { VIDEO_CATEGORIES, VIDEOS, type VideoCategoryKey } from '@/data/videos-rnv';
 
 function formatDuration(seconds?: number) {
   if (!seconds) return '';
@@ -19,7 +19,7 @@ function platformIcon(p: VideoItem['platforms']['ios']) {
   return p.supported ? '✅' : '❌';
 }
 
-export default function VideoListScreen() {
+export default function RnvVideoListScreen() {
   const [active, setActive] = useState<VideoCategoryKey>('all');
 
   const data = useMemo(() => {
@@ -29,13 +29,13 @@ export default function VideoListScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <ScreenHeader title="Videos" badge={`${VIDEOS.length}`} />
+      <ScreenHeader title="RN-Video" badge={`${VIDEOS.length}`} />
 
       <CategoryChips chips={VIDEO_CATEGORIES} active={active} onChange={setActive} />
 
       <View className="flex-row items-center justify-between px-4 py-2.5">
         <Text className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Showing {data.length} of {VIDEOS.length}
+          Showing {data.length} of {VIDEOS.length} · react-native-video engine
         </Text>
       </View>
 
@@ -44,7 +44,9 @@ export default function VideoListScreen() {
         keyExtractor={(item) => item.id}
         contentContainerClassName="px-3 pb-6"
         renderItem={({ item }) => (
-          <Link href={{ pathname: '/video/[id]', params: { id: item.id } }} asChild>
+          <Link
+            href={`/video-rnv/${item.id}` as never}
+            asChild>
             <Pressable className="mb-4 overflow-hidden rounded-2xl bg-card shadow-sm active:opacity-80">
               <View className="relative aspect-video w-full bg-black">
                 {item.poster ? (
@@ -87,10 +89,10 @@ export default function VideoListScreen() {
                       </Text>
                     </View>
                   ) : null}
-                  {item.hdr ? (
-                    <View className="rounded bg-amber-500 px-2 py-0.5">
+                  {item.subtitles && item.subtitles.length > 0 ? (
+                    <View className="rounded bg-blue-600 px-2 py-0.5">
                       <Text className="text-[11px] font-bold tracking-wide text-white">
-                        {item.hdr.toUpperCase()}
+                        +SUBS
                       </Text>
                     </View>
                   ) : null}

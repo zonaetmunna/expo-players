@@ -5,6 +5,7 @@ import { CastButton, useRemoteMediaClient } from 'react-native-google-cast';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { PlayerGestures } from './PlayerGestures';
+import { VideoFilmstrip } from './VideoFilmstrip';
 import { usePlayerSnapshot } from './hooks/usePlayerSnapshot';
 import type { VideoItem } from './types';
 
@@ -19,6 +20,7 @@ type Props = {
   startsPictureInPictureAutomatically?: boolean;
   contentFit?: VideoContentFit;
   gesturesEnabled?: boolean;
+  showFilmstrip?: boolean;
   style?: ViewStyle;
   onPlayingChange?: (isPlaying: boolean) => void;
   onStatusChange?: (status: string) => void;
@@ -43,6 +45,7 @@ export function VideoPlayer({
   startsPictureInPictureAutomatically = false,
   contentFit = 'contain',
   gesturesEnabled = true,
+  showFilmstrip = false,
   style,
   onPlayingChange,
   onStatusChange,
@@ -128,28 +131,31 @@ export function VideoPlayer({
   }, [player]);
 
   return (
-    <View style={[styles.container, style]}>
-      <PlayerGestures
-        player={player}
-        snapshot={snapshot}
-        contentFit={fit}
-        onContentFitChange={setFit}
-        enabled={gesturesEnabled}>
-        <VideoView
+    <View style={style}>
+      <View style={styles.container}>
+        <PlayerGestures
           player={player}
-          style={StyleSheet.absoluteFill}
-          nativeControls={nativeControls}
-          fullscreenOptions={{ enable: allowNativeFullscreen }}
-          allowsPictureInPicture={allowsPictureInPicture}
-          startsPictureInPictureAutomatically={autoPiP}
+          snapshot={snapshot}
           contentFit={fit}
-        />
-      </PlayerGestures>
-      {canCastVideo ? (
-        <View style={styles.castButtonWrap} pointerEvents="box-none">
-          <CastButton style={styles.castButton} />
-        </View>
-      ) : null}
+          onContentFitChange={setFit}
+          enabled={gesturesEnabled}>
+          <VideoView
+            player={player}
+            style={StyleSheet.absoluteFill}
+            nativeControls={nativeControls}
+            fullscreenOptions={{ enable: allowNativeFullscreen }}
+            allowsPictureInPicture={allowsPictureInPicture}
+            startsPictureInPictureAutomatically={autoPiP}
+            contentFit={fit}
+          />
+        </PlayerGestures>
+        {canCastVideo ? (
+          <View style={styles.castButtonWrap} pointerEvents="box-none">
+            <CastButton style={styles.castButton} />
+          </View>
+        ) : null}
+      </View>
+      {showFilmstrip ? <VideoFilmstrip player={player} source={source} /> : null}
     </View>
   );
 }

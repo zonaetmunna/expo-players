@@ -249,10 +249,11 @@ We ship in rounds. Pick one, build it, update boxes here, move on.
 | Status | Feature | Source | Notes |
 |:-:|---|---|---|
 | 🔨 | Hover preview thumbnails | custom | web-first concept |
-| 🔨 | Sprite thumbnails on scrubber | custom + sprites | |
+| 🚫 | Sprite thumbnails on scrubber | custom + native controls limit | Native controls don't expose scrubber position; would require Round 4 custom controls. Filmstrip below player built instead — see row below. |
+| ✅ | Filmstrip below player | expo-video | `components/player/video/VideoFilmstrip.tsx` — 8 scenes via `generateThumbnailsAsync()`; tap to seek |
 | 🔨 | Timeline heatmap | custom + server | |
 | 🔨 | Chapter-based navigation | custom | tied to chapters |
-| 🟡 | Seek preview (live frames) | expo-video | `generateThumbnailsAsync()` |
+| ✅ | Seek preview (live frames) | expo-video | covered by filmstrip via `generateThumbnailsAsync()` |
 
 ---
 
@@ -393,3 +394,4 @@ New features go under `app/test/<feature>.tsx` so each is isolated. The main det
 > Add an entry whenever we explicitly decide NOT to build something.
 
 - **2026-04-28** — Manual resolution/quality selection: `expo-video` exposes `availableVideoTracks` but `videoTrack` is `readonly`. No way to set it. ABR is forced automatic. Speed / audio / subtitle pickers built instead — those are writable. Would need switching to `react-native-video` to enable manual quality.
+- **2026-04-28** — Sprite thumbnails on scrubber (YouTube-style hover bubble): not feasible while keeping native controls. The OS scrubber doesn't expose drag position, so we can't render a thumbnail bubble at the right spot. Building it would require replacing native controls (Round 4 custom controls). User chose to keep native controls; we shipped a filmstrip strip below the player using `generateThumbnailsAsync` instead — same data source, different UX.

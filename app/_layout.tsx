@@ -10,6 +10,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import GoogleCast from 'react-native-google-cast';
 
 
 import { ThemeToggle } from '@/components/nativewindui/ThemeToggle';
@@ -32,6 +33,13 @@ export default function RootLayout() {
       allowsRecording: false,
       shouldRouteThroughEarpiece: false,
     }).catch(() => {});
+
+    // Cast SDK initializes itself via the native plugin. On iOS, Apple requires showing
+    // a one-time introductory overlay the first time the user sees the Cast button —
+    // we schedule it once on first mount; the library tracks the "already shown" state.
+    GoogleCast.showIntroductoryOverlay().catch(() => {
+      // ignore — happens when no Cast button is currently rendered or on Android
+    });
   }, []);
 
   return (
@@ -46,6 +54,7 @@ export default function RootLayout() {
             <Stack screenOptions={SCREEN_OPTIONS}>
               <Stack.Screen name="(drawer)" options={DRAWER_OPTIONS} />
               <Stack.Screen name="video/[id]" options={VIDEO_OPTIONS} />
+              <Stack.Screen name="video-rnv/[id]" options={VIDEO_OPTIONS} />
               <Stack.Screen name="audio/[id]" options={AUDIO_OPTIONS} />
               <Stack.Screen name="modal" options={MODAL_OPTIONS} />
             </Stack>

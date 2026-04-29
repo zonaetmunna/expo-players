@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Text, View } from 'react-native';
 
-import type { PlatformSupport, VideoItem } from '@/components/player/video/types';
+import type { PlatformSupport, VideoItem } from '@/components/player/expo-video/types';
 
 export function Section({ title, children }: { title: string; children: ReactNode }) {
   return (

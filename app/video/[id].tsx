@@ -1,8 +1,8 @@
 import { Link, Stack, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
-import { VideoPlayer } from '@/components/player/video';
-import type { VideoItem } from '@/components/player/video/types';
+import { VideoPlayer } from '@/components/player/expo-video';
+import type { VideoItem } from '@/components/player/expo-video/types';
 import {
   DeviceCompatibility,
   KnownIssues,
@@ -32,6 +32,7 @@ export default function VideoDetailsScreen() {
         source={video}
         allowsPictureInPicture
         startsPictureInPictureAutomatically
+        showFilmstrip
       />
 
       {/* home screen link */}
