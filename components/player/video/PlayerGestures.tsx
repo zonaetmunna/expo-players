@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { VideoContentFit, VideoPlayer } from 'expo-video';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
@@ -23,6 +23,7 @@ type Props = {
   contentFit: VideoContentFit;
   onContentFitChange: (next: VideoContentFit) => void;
   enabled?: boolean;
+  children?: ReactNode;
 };
 
 type SeekFlash = { dir: 'forward' | 'backward'; seconds: number } | null;
@@ -49,6 +50,7 @@ export function PlayerGestures({
   contentFit,
   onContentFitChange,
   enabled = true,
+  children,
 }: Props) {
   const [layout, setLayout] = useState({ width: 0, height: 0 });
   const [seekFlash, setSeekFlash] = useState<SeekFlash>(null);
@@ -135,10 +137,14 @@ export function PlayerGestures({
       Gesture.Race(
         doubleTap,
         longPress,
-        Gesture.Simultaneous(pinch, Gesture.Race(swipeSeek, swipeVolume, swipeBrightness))
+        Gesture.Simultaneous(
+          pinch,
+          Gesture.Race(swipeSeek, Gesture.Simultaneous(swipeVolume, swipeBrightness))
+        )
       ),
     [doubleTap, longPress, pinch, swipeSeek, swipeVolume, swipeBrightness]
   );
+  const nativeGesture = useMemo(() => Gesture.Native(), []);
 
   const volumeHudStyle = useAnimatedStyle(() => {
     const v = volumeSV.value;
@@ -163,19 +169,13 @@ export function PlayerGestures({
   });
 
   if (!enabled) {
-    return (
-      <View
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-        onLayout={onLayout}
-      />
-    );
+    return <View style={StyleSheet.absoluteFill} onLayout={onLayout}>{children}</View>;
   }
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none" onLayout={onLayout}>
-      <GestureDetector gesture={composed}>
-        <View style={StyleSheet.absoluteFill} pointerEvents="box-none" />
+    <View style={StyleSheet.absoluteFill} onLayout={onLayout}>
+      <GestureDetector gesture={Gesture.Simultaneous(nativeGesture, composed)}>
+        <View style={StyleSheet.absoluteFill}>{children}</View>
       </GestureDetector>
 
       {seekFlash ? (

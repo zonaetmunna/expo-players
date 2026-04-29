@@ -1,5 +1,5 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
-import { ScrollView, Text, View } from 'react-native';
+import { Link, Stack, useLocalSearchParams } from 'expo-router';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { VideoPlayer } from '@/components/player/video';
 import type { VideoItem } from '@/components/player/video/types';
@@ -28,7 +28,18 @@ export default function VideoDetailsScreen() {
   return (
     <View className="flex-1 bg-background">
       <Stack.Screen options={{ title: video.title }} />
-      <VideoPlayer source={video} />
+      <VideoPlayer
+        source={video}
+        allowsPictureInPicture
+        startsPictureInPictureAutomatically
+      />
+
+      {/* home screen link */}
+      <Link href="/(drawer)/(tabs)" asChild>
+        <Pressable className="rounded-xl bg-card p-5 shadow-sm active:opacity-80">
+          <Text className="text-lg font-semibold text-card-foreground">🏠 Home</Text>
+        </Pressable>
+      </Link>
 
       <ScrollView
         style={{ flex: 1 }}

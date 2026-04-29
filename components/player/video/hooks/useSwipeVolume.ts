@@ -1,5 +1,5 @@
 import type { VideoPlayer } from 'expo-video';
-import { Platform } from 'react-native';
+import { Dimensions, Platform } from 'react-native';
 import { Gesture } from 'react-native-gesture-handler';
 import { useSharedValue } from 'react-native-reanimated';
 import { runOnJS } from 'react-native-worklets';
@@ -23,6 +23,9 @@ export function useSwipeVolume({
 }: Options) {
   const startVolume = useSharedValue(1);
   const active = useSharedValue(false);
+  const fallbackWindow = Dimensions.get('window');
+  const effectiveWidth = layoutWidth > 0 ? layoutWidth : fallbackWindow.width;
+  const effectiveHeight = layoutHeight > 0 ? layoutHeight : fallbackWindow.height;
 
   const captureStart = () => {
     startVolume.value = snapshot.current.volume;
@@ -46,7 +49,7 @@ export function useSwipeVolume({
       .activeOffsetY([-12, 12])
       .failOffsetX([-20, 20])
       .onBegin((e) => {
-        if (e.x < layoutWidth / 2) {
+        if (e.x < effectiveWidth / 2) {
           active.value = false;
           return;
         }
@@ -55,7 +58,7 @@ export function useSwipeVolume({
       })
       .onUpdate((e) => {
         if (!active.value) return;
-        const ratio = -e.translationY / Math.max(1, layoutHeight);
+        const ratio = -e.translationY / Math.max(1, effectiveHeight);
         runOnJS(apply)(startVolume.value + ratio);
       })
       .onFinalize(() => {

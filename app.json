@@ -17,6 +17,12 @@
       "expo-router",
       "@react-native-community/datetimepicker",
       [
+        "react-native-google-cast",
+        {
+          "receiverAppId": "CC1AD845"
+        }
+      ],
+      [
         "expo-video",
         {
           "supportsBackgroundPlayback": true,

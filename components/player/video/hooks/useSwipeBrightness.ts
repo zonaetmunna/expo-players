@@ -1,6 +1,6 @@
 import * as Brightness from 'expo-brightness';
 import { useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
+import { Dimensions, Platform } from 'react-native';
 import { Gesture } from 'react-native-gesture-handler';
 import { useSharedValue } from 'react-native-reanimated';
 import { runOnJS } from 'react-native-worklets';
@@ -16,6 +16,9 @@ export function useSwipeBrightness({ layoutWidth, layoutHeight, onUpdate }: Opti
   const active = useSharedValue(false);
   const lastValueRef = useRef<number>(0.5);
   const supported = Platform.OS === 'ios' || Platform.OS === 'android';
+  const fallbackWindow = Dimensions.get('window');
+  const effectiveWidth = layoutWidth > 0 ? layoutWidth : fallbackWindow.width;
+  const effectiveHeight = layoutHeight > 0 ? layoutHeight : fallbackWindow.height;
 
   // Seed from current brightness on mount (best-effort)
   useEffect(() => {
@@ -23,6 +26,9 @@ export function useSwipeBrightness({ layoutWidth, layoutHeight, onUpdate }: Opti
     let cancelled = false;
     (async () => {
       try {
+        if (Platform.OS === 'android') {
+          await Brightness.requestPermissionsAsync();
+        }
         const v = await Brightness.getBrightnessAsync();
         if (!cancelled) {
           lastValueRef.current = v;
@@ -62,7 +68,7 @@ export function useSwipeBrightness({ layoutWidth, layoutHeight, onUpdate }: Opti
     .activeOffsetY([-12, 12])
     .failOffsetX([-20, 20])
     .onBegin((e) => {
-      if (e.x >= layoutWidth / 2) {
+      if (e.x >= effectiveWidth / 2) {
         active.value = false;
         return;
       }
@@ -71,7 +77,7 @@ export function useSwipeBrightness({ layoutWidth, layoutHeight, onUpdate }: Opti
     })
     .onUpdate((e) => {
       if (!active.value) return;
-      const ratio = -e.translationY / Math.max(1, layoutHeight);
+      const ratio = -e.translationY / Math.max(1, effectiveHeight);
       runOnJS(apply)(startBrightness.value + ratio);
     })
     .onFinalize(() => {
