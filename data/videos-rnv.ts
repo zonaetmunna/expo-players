@@ -191,6 +191,98 @@ export const VIDEOS: VideoItem[] = [
     license: 'Free for testing',
   },
   {
+    id: 'rnv-drm-widevine-bitmovin',
+    title: 'DRM Widevine — Bitmovin Art of Motion (DASH)',
+    description:
+      'Bitmovin reference Widevine stream — multi-bitrate DASH, useful for ABR + license testing.',
+    poster: 'https://bitmovin.com/wp-content/uploads/2018/06/poster.jpg',
+    uri: 'https://bitmovin-a.akamaihd.net/content/art-of-motion_drm/mpds/11331.mpd',
+    type: 'dash',
+    category: 'drm',
+    duration: 210,
+    codecVideo: 'h264',
+    codecAudio: 'aac',
+    resolution: '1080p',
+    drm: {
+      type: 'widevine',
+      licenseServer: 'https://cwip-shaka-proxy.appspot.com/no_auth',
+    },
+    platforms: {
+      ios: { supported: false, note: 'iOS uses FairPlay only' },
+      android: { supported: true, minVersion: '5' },
+      web: { supported: true, browsers: ['Chrome', 'Firefox', 'Edge'] },
+    },
+    knownIssues: [
+      'License server is the Shaka proxy — Bitmovin\'s own server requires auth tokens',
+    ],
+    source: 'Bitmovin demo assets + cwip-shaka-proxy',
+    license: 'Free for testing',
+  },
+  {
+    id: 'rnv-drm-widevine-axinom-multi',
+    title: 'DRM Widevine — Axinom Multi-DRM Demo (DASH)',
+    description:
+      'Axinom multi-period DASH with Widevine + PlayReady. Real-world structure used by enterprise streamers.',
+    uri: 'https://media.axprod.net/TestVectors/v7-MultiDRM-SingleKey/Manifest_1080p.mpd',
+    type: 'dash',
+    category: 'drm',
+    duration: 634,
+    codecVideo: 'h264',
+    codecAudio: 'aac',
+    resolution: '1080p',
+    drm: {
+      type: 'widevine',
+      licenseServer:
+        'https://drm-widevine-licensing.axtest.net/AcquireLicense',
+      headers: {
+        'X-AxDRM-Message':
+          'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ2ZXJzaW9uIjoxLCJjb21fa2V5X2lkIjoiYjMzNjRlYjUtNTFmNi00YWUzLThjOTgtMzNjZWQ1ZTMxYzc4IiwibWVzc2FnZSI6eyJ0eXBlIjoiZW50aXRsZW1lbnRfbWVzc2FnZSIsImtleXMiOlt7ImlkIjoiOWViNDA1MGQtZTQ0Yi00ODAyLTkzMmUtMjdkNzUwODNlMjY2IiwiZW5jcnlwdGVkX2tleSI6ImxLM09qSExZVzI0Y3Iya3RSNzRmbnc9PSJ9XX19.4lWwW46k-oWcah8oN18LPj5OLS5ZU-_AQv7fe0JhNjA',
+      },
+      multiDrm: true,
+    },
+    platforms: {
+      ios: { supported: false, note: 'iOS needs the FairPlay variant of this manifest' },
+      android: { supported: true, minVersion: '5' },
+      web: { supported: true, browsers: ['Chrome', 'Firefox', 'Edge'] },
+    },
+    restrictions: ['Requires X-AxDRM-Message header for license acquisition'],
+    knownIssues: ['Token is public test token — would be backend-signed in production'],
+    source: 'Axinom DRM test vectors (https://www.axinom.com/access)',
+    license: 'Free for testing',
+  },
+  {
+    id: 'rnv-drm-fairplay-apple-bipbop',
+    title: 'DRM FairPlay — Apple BipBop (HLS)',
+    description:
+      'Apple\'s reference FairPlay HLS stream with sample-AES encryption. iOS-only — test the FairPlay code path.',
+    uri: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8',
+    type: 'hls',
+    category: 'drm',
+    duration: 1800,
+    codecVideo: 'h264',
+    codecAudio: 'aac',
+    resolution: '1080p',
+    drm: {
+      type: 'fairplay',
+      // Apple's BipBop sample stream actually plays without DRM keys for the
+      // unencrypted variant — the FairPlay config below is illustrative for the
+      // protected variant. Replace with your own license server when shipping.
+      licenseServer: 'https://fps.ezdrm.com/api/licenses/your-token',
+      certificateUrl: 'https://fps.ezdrm.com/demo/video/eleisure.cer',
+      base64Certificate: false,
+    },
+    platforms: {
+      ios: { supported: true, minVersion: '11.2' },
+      android: { supported: false, note: 'FairPlay is iOS-only — Android needs Widevine variant' },
+      web: { supported: false, note: 'rn-video has no web build' },
+    },
+    knownIssues: [
+      'Demo license server may be down — replace with your own FairPlay license server for real testing',
+    ],
+    source: 'Apple HLS reference + EZDRM demo cert',
+    license: 'Free for testing',
+  },
+  {
     id: 'rnv-live-unified',
     title: 'Live HLS (Unified Streaming demo)',
     description:

@@ -34,6 +34,7 @@ export function DefaultSkin(props: SkinProps) {
     title,
     isLive,
     hasError,
+    errorMessage,
     isEnded = false,
     rate,
     resizeMode,
@@ -74,6 +75,11 @@ export function DefaultSkin(props: SkinProps) {
         <View style={styles.errorOverlay}>
           <Ionicons name="warning" size={32} color="#fff" />
           <Text style={styles.errorText}>Playback failed</Text>
+          {errorMessage ? (
+            <Text style={styles.errorDetail} numberOfLines={4}>
+              {errorMessage}
+            </Text>
+          ) : null}
           <Pressable
             onPress={onRetry}
             style={[styles.retryBtn, { backgroundColor: retryColor }]}>
@@ -318,6 +324,13 @@ const styles = StyleSheet.create({
     zIndex: 3,
   },
   errorText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  errorDetail: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 12,
+    textAlign: 'center',
+    paddingHorizontal: 24,
+    lineHeight: 16,
+  },
   retryBtn: {
     flexDirection: 'row',
     alignItems: 'center',

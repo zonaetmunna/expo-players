@@ -33,6 +33,8 @@ export type SkinProps = {
   title: string;
   isLive: boolean;
   hasError: boolean;
+  /** Optional human-readable error message — shown by skins below the error icon. */
+  errorMessage?: string | null;
   isEnded?: boolean;
   rate: number;
   resizeMode: ResizeMode;

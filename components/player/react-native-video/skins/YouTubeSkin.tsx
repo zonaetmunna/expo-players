@@ -36,6 +36,7 @@ export function YouTubeSkin(props: SkinProps) {
     title,
     isLive,
     hasError,
+    errorMessage,
     isEnded = false,
     rate,
     resizeMode,
@@ -70,6 +71,11 @@ export function YouTubeSkin(props: SkinProps) {
         <View style={styles.errorOverlay}>
           <Ionicons name="alert-circle" size={36} color={YT_RED} />
           <Text style={styles.errorText}>Playback error</Text>
+          {errorMessage ? (
+            <Text style={styles.errorDetail} numberOfLines={4}>
+              {errorMessage}
+            </Text>
+          ) : null}
           <Pressable onPress={onRetry} style={styles.retryBtn}>
             <Text style={styles.retryText}>RETRY</Text>
           </Pressable>
@@ -303,6 +309,13 @@ const styles = StyleSheet.create({
     zIndex: 3,
   },
   errorText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  errorDetail: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 12,
+    textAlign: 'center',
+    paddingHorizontal: 24,
+    lineHeight: 16,
+  },
   retryBtn: {
     paddingHorizontal: 18,
     paddingVertical: 9,

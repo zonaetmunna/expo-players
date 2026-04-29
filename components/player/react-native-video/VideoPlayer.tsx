@@ -2,7 +2,6 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Platform, StatusBar, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import Video, {
-  DRMType,
   ResizeMode as RnvResizeMode,
   SelectedTrackType,
   SelectedVideoTrackType,
@@ -19,6 +18,7 @@ import Video, {
 import { CastIndicator } from './CastIndicator';
 import { CustomControls } from './CustomControls';
 import { PlayerGestures } from './PlayerGestures';
+import { describeDrmError, isDrmSchemeSupported, mapDrm, validateDrm } from './drm';
 import { useCastSession } from './hooks/useCastSession';
 import { useRnvPlayerSnapshot } from './hooks/useRnvPlayerSnapshot';
 import type { ResizeMode } from './resizeMode';
@@ -38,8 +38,6 @@ type Props = {
   style?: ViewStyle;
 };
 
-/** Round B5 — DRM source validation. Returns false for malformed configs that would
- * hang FairPlay setup or trigger silent failures inside rn-video. */
 /** Map our string-literal ResizeMode to rn-video v6's ResizeMode enum.
  * rn-video v6 expects the enum values for live updates to take effect on iOS. */
 function mapResizeMode(mode: ResizeMode): RnvResizeMode {
@@ -54,14 +52,6 @@ function mapResizeMode(mode: ResizeMode): RnvResizeMode {
     default:
       return RnvResizeMode.CONTAIN;
   }
-}
-
-function isValidDrm(drm: { type: string; licenseServer: string }): boolean {
-  if (!drm) return false;
-  if (typeof drm.licenseServer !== 'string' || drm.licenseServer.trim() === '') return false;
-  if (!/^https?:\/\//i.test(drm.licenseServer)) return false;
-  const validTypes = ['widevine', 'fairplay', 'playready', 'clearkey'];
-  return validTypes.includes(drm.type);
 }
 
 function mapVideoTrackSelection(sel: number | 'auto'): SelectedVideoTrack {
@@ -112,7 +102,8 @@ export function VideoPlayer({
 
   // Compatibility check: surface a banner instead of mounting <Video> with sources
   // that the platform fundamentally can't decode (rn-video would emit an opaque
-  // error otherwise).
+  // error otherwise). DRM checks live here too so we never hand a bad config to
+  // rn-video — it would emit a vague native error several seconds later.
   const compatError = (() => {
     if (Platform.OS === 'ios' && source.type === 'dash') {
       return 'MPEG-DASH is not supported on iOS. Use HLS or progressive MP4 instead.';
@@ -122,6 +113,22 @@ export function VideoPlayer({
     }
     if (Platform.OS === 'ios' && source.type === 'ogg') {
       return 'OGG/Theora is not supported on iOS.';
+    }
+    if (source.drm) {
+      const reason = validateDrm(source.drm);
+      if (reason) return `DRM config error — ${reason}`;
+      if (!isDrmSchemeSupported(source.drm.type)) {
+        if (Platform.OS === 'web') {
+          return 'DRM-protected streams are not supported on web. Open this title on iOS or Android.';
+        }
+        if (Platform.OS === 'ios' && source.drm.type !== 'fairplay') {
+          return `iOS only supports FairPlay DRM — this stream uses ${source.drm.type}.`;
+        }
+        if (Platform.OS === 'android' && source.drm.type === 'fairplay') {
+          return 'FairPlay is iOS-only. This stream needs a Widevine variant for Android playback.';
+        }
+        return `${source.drm.type} DRM is not supported on this platform.`;
+      }
     }
     return null;
   })();
@@ -338,6 +345,16 @@ export function VideoPlayer({
     // eslint-disable-next-line no-console
     console.warn('[rn-video] onError raw:', serialized);
 
+    // If the source uses DRM and the error matches a known DRM signature, surface
+    // a tailored message — much more actionable than the raw native error string.
+    if (source.drm) {
+      const drmMsg = describeDrmError(e);
+      if (drmMsg) {
+        setError(drmMsg);
+        return;
+      }
+    }
+
     const err = (e?.error ?? e) as Record<string, unknown> | undefined;
     const parts: string[] = [];
     if (err) {
@@ -370,16 +387,7 @@ export function VideoPlayer({
       uri: source.uri,
       // Let rn-video auto-detect from the URL extension (.m3u8 / .mpd / .mp4).
       headers: source.drm?.headers,
-      drm:
-        source.drm && isValidDrm(source.drm)
-          ? {
-              type: source.drm.type as DRMType,
-              licenseServer: source.drm.licenseServer,
-              headers: source.drm.headers,
-              contentId: source.drm.contentId,
-              certificateUrl: source.drm.certificateUrl,
-            }
-          : undefined,
+      drm: mapDrm(source.drm),
       metadata: {
         title: source.title,
         description: source.description,
@@ -465,6 +473,7 @@ export function VideoPlayer({
         title={source.title}
         isLive={!!source.isLive}
         hasError={!!error}
+        errorMessage={error}
         isEnded={isEnded}
         rate={rate}
         resizeMode={resizeMode}

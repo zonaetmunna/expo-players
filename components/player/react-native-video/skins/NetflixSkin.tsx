@@ -36,6 +36,7 @@ export function NetflixSkin(props: SkinProps) {
     title,
     isLive,
     hasError,
+    errorMessage,
     isEnded = false,
     rate,
     resizeMode,
@@ -70,6 +71,11 @@ export function NetflixSkin(props: SkinProps) {
         <View style={styles.errorOverlay}>
           <Ionicons name="warning" size={36} color={NETFLIX_RED} />
           <Text style={styles.errorText}>Playback failed</Text>
+          {errorMessage ? (
+            <Text style={styles.errorDetail} numberOfLines={4}>
+              {errorMessage}
+            </Text>
+          ) : null}
           <Pressable onPress={onRetry} style={styles.retryBtn}>
             <Ionicons name="refresh" size={16} color="#fff" />
             <Text style={styles.retryText}>Retry</Text>
@@ -357,6 +363,13 @@ const styles = StyleSheet.create({
     zIndex: 3,
   },
   errorText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  errorDetail: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 12,
+    textAlign: 'center',
+    paddingHorizontal: 28,
+    lineHeight: 17,
+  },
   retryBtn: {
     flexDirection: 'row',
     alignItems: 'center',

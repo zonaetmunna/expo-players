@@ -29,12 +29,53 @@ export type VideoPlatforms = {
   web: PlatformSupport;
 };
 
+export type DRMScheme = 'widevine' | 'fairplay' | 'playready' | 'clearkey';
+
+/**
+ * DRM configuration for a protected stream. Maps directly to react-native-video's
+ * Drm prop. Platform support is enforced at runtime in VideoPlayer:
+ *   - widevine  → Android (ExoPlayer)
+ *   - fairplay  → iOS / tvOS (AVPlayer)
+ *   - playready → Android
+ *   - clearkey  → Android (testing only, keys are plaintext)
+ *
+ * For multi-DRM streams (one manifest, both Widevine + FairPlay), set `multiDrm: true`
+ * and provide the per-platform license servers via the platform-specific override fields
+ * (consumer can swap the `type` based on Platform.OS before passing to VideoPlayer).
+ */
 export type VideoDRM = {
-  type: 'widevine' | 'fairplay' | 'playready' | 'clearkey';
-  licenseServer: string;
+  type: DRMScheme;
+  /** License server URL. Required unless `getLicense` is provided. */
+  licenseServer?: string;
+  /** HTTP headers attached to the license request (e.g. auth tokens). */
   headers?: Record<string, string>;
+  /** Optional content/key id — required by some FairPlay deployments. */
   contentId?: string;
+  /** FairPlay only — URL of the application certificate. */
   certificateUrl?: string;
+  /**
+   * FairPlay only — set to true when `certificateUrl` returns a base64-encoded
+   * certificate (some CDNs do, some return raw DER bytes).
+   */
+  base64Certificate?: boolean;
+  /**
+   * Set true when the same manifest is wrapped in multiple DRM schemes (Widevine
+   * + PlayReady on a single DASH manifest is the common case).
+   */
+  multiDrm?: boolean;
+  /**
+   * Custom license-acquisition callback. Use this when your license server needs
+   * pre-/post-processing (e.g. wrapping the SPC in a JSON envelope, attaching a
+   * short-lived auth token signed at request time, or proxying through your CDN).
+   *
+   * Returns the CKC (FairPlay) or license response body (Widevine) as a base64 string.
+   */
+  getLicense?: (
+    spcBase64: string,
+    contentId: string,
+    licenseUrl: string,
+    loadedLicenseUrl: string
+  ) => string | Promise<string>;
 };
 
 export type SideLoadedSubtitle = {
