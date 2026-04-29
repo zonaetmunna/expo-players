@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Platform, StatusBar, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import Video, {
   DRMType,
+  ResizeMode as RnvResizeMode,
   SelectedTrackType,
   SelectedVideoTrackType,
   TextTrackType,
@@ -37,6 +38,22 @@ type Props = {
 
 /** Round B5 — DRM source validation. Returns false for malformed configs that would
  * hang FairPlay setup or trigger silent failures inside rn-video. */
+/** Map our string-literal ResizeMode to rn-video v6's ResizeMode enum.
+ * rn-video v6 expects the enum values for live updates to take effect on iOS. */
+function mapResizeMode(mode: ResizeMode): RnvResizeMode {
+  switch (mode) {
+    case 'cover':
+      return RnvResizeMode.COVER;
+    case 'stretch':
+      return RnvResizeMode.STRETCH;
+    case 'none':
+      return RnvResizeMode.NONE;
+    case 'contain':
+    default:
+      return RnvResizeMode.CONTAIN;
+  }
+}
+
 function isValidDrm(drm: { type: string; licenseServer: string }): boolean {
   if (!drm) return false;
   if (typeof drm.licenseServer !== 'string' || drm.licenseServer.trim() === '') return false;
@@ -400,7 +417,7 @@ export function VideoPlayer({
           repeat={loop}
           rate={rate}
           volume={state.volume}
-          resizeMode={resizeMode}
+          resizeMode={mapResizeMode(resizeMode)}
           selectedVideoTrack={mapVideoTrackSelection(state.selectedVideoTrack)}
           selectedAudioTrack={mapAudioTrackSelection(state.selectedAudioTrack)}
           selectedTextTrack={mapTextTrackSelection(state.selectedTextTrack)}
@@ -440,6 +457,7 @@ export function VideoPlayer({
         hasError={!!error}
         isEnded={isEnded}
         rate={rate}
+        resizeMode={resizeMode}
         isFullscreen={isFullscreen}
         canCast={cast.canCast}
         isCasting={cast.isCasting}
@@ -452,6 +470,7 @@ export function VideoPlayer({
         onSelectVideoTrack={onSelectVideoTrack}
         onSelectAudioTrack={onSelectAudioTrack}
         onSelectTextTrack={onSelectTextTrack}
+        onSelectResizeMode={setResizeMode}
         onToggleFullscreen={onToggleFullscreen}
         onRequestPiP={onRequestPiP}
         onRetry={onRetry}

@@ -63,7 +63,9 @@ export function PlayerGestures({
   const [seekFlash, setSeekFlash] = useState<SeekFlash>(null);
   const [seekPreview, setSeekPreview] = useState<SeekPreview>(null);
   const [boosted, setBoosted] = useState(false);
+  const [zoomFlash, setZoomFlash] = useState<'cover' | 'contain' | null>(null);
   const seekFlashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const zoomFlashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const volumeSV = useSharedValue<number>(-1);
   const brightnessSV = useSharedValue<number>(-1);
@@ -89,8 +91,21 @@ export function PlayerGestures({
   useEffect(() => {
     return () => {
       if (seekFlashTimeoutRef.current) clearTimeout(seekFlashTimeoutRef.current);
+      if (zoomFlashTimeoutRef.current) clearTimeout(zoomFlashTimeoutRef.current);
     };
   }, []);
+
+  const handleZoomChange = (next: ResizeMode) => {
+    onResizeModeChange(next);
+    if (next === 'cover' || next === 'contain') {
+      setZoomFlash(next);
+      if (zoomFlashTimeoutRef.current) clearTimeout(zoomFlashTimeoutRef.current);
+      zoomFlashTimeoutRef.current = setTimeout(() => {
+        setZoomFlash(null);
+        zoomFlashTimeoutRef.current = null;
+      }, 900);
+    }
+  };
 
   const onVolumeUpdate = (v: number | null) => {
     if (v === null) {
@@ -134,7 +149,7 @@ export function PlayerGestures({
     layoutHeight: layout.height,
     onUpdate: onBrightnessUpdate,
   });
-  const pinch = usePinchZoom({ resizeMode, onChange: onResizeModeChange });
+  const pinch = usePinchZoom({ resizeMode, onChange: handleZoomChange });
   const longPress = useLongPressSpeed({
     setRate,
     // Disable when live (no rate change makes sense), or when not actually playing
@@ -207,6 +222,19 @@ export function PlayerGestures({
         </View>
       ) : null}
 
+      {zoomFlash ? (
+        <View pointerEvents="none" style={styles.zoomFlash}>
+          <Ionicons
+            name={zoomFlash === 'cover' ? 'expand' : 'contract'}
+            size={16}
+            color="#fff"
+          />
+          <Text style={styles.zoomFlashText}>
+            {zoomFlash === 'cover' ? 'Fill' : 'Fit'}
+          </Text>
+        </View>
+      ) : null}
+
       <Animated.View
         pointerEvents="none"
         style={[styles.sideHud, styles.sideHudRight, volumeHudStyle]}>
@@ -258,6 +286,26 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
+  },
+  zoomFlash: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginLeft: -42,
+    marginTop: -16,
+    width: 84,
+    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    borderRadius: 999,
+  },
+  zoomFlashText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
   },
   centerHud: {
     position: 'absolute',

@@ -21,6 +21,7 @@ import { SpriteThumbnail } from './SpriteThumbnail';
 import { useControlsAutoHide } from './hooks/useControlsAutoHide';
 import type { RnvSnapshotRef } from './hooks/useRnvPlayerSnapshot';
 import { useSpriteThumbnails } from './hooks/useSpriteThumbnails';
+import type { ResizeMode } from './resizeMode';
 import type { RnvSnapshot, SpriteThumbnails } from './types';
 
 const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] as const;
@@ -57,6 +58,7 @@ type Props = {
   hasError: boolean;
   isEnded?: boolean;
   rate: number;
+  resizeMode: ResizeMode;
   isFullscreen: boolean;
   canCast?: boolean;
   isCasting?: boolean;
@@ -69,6 +71,7 @@ type Props = {
   onSelectVideoTrack: (index: number | 'auto') => void;
   onSelectAudioTrack: (index: number | null) => void;
   onSelectTextTrack: (index: number | null) => void;
+  onSelectResizeMode: (mode: ResizeMode) => void;
   onToggleFullscreen: () => void;
   onRequestPiP?: () => void;
   onRetry: () => void;
@@ -98,6 +101,7 @@ export function CustomControls({
   hasError,
   isEnded = false,
   rate,
+  resizeMode,
   isFullscreen,
   canCast = false,
   isCasting = false,
@@ -110,6 +114,7 @@ export function CustomControls({
   onSelectVideoTrack,
   onSelectAudioTrack,
   onSelectTextTrack,
+  onSelectResizeMode,
   onToggleFullscreen,
   onRequestPiP,
   onRetry,
@@ -459,6 +464,8 @@ export function CustomControls({
         onClose={() => setSettingsOpen(false)}
         rate={rate}
         onSelectRate={onSetRate}
+        resizeMode={resizeMode}
+        onSelectResizeMode={onSelectResizeMode}
         videoTracks={state.videoTracks}
         selectedVideoTrack={state.selectedVideoTrack}
         onSelectVideoTrack={onSelectVideoTrack}
@@ -478,6 +485,8 @@ type SheetProps = {
   onClose: () => void;
   rate: number;
   onSelectRate: (r: number) => void;
+  resizeMode: ResizeMode;
+  onSelectResizeMode: (mode: ResizeMode) => void;
   videoTracks: RnvSnapshot['videoTracks'];
   selectedVideoTrack: RnvSnapshot['selectedVideoTrack'];
   onSelectVideoTrack: (index: number | 'auto') => void;
@@ -489,11 +498,19 @@ type SheetProps = {
   onSelectTextTrack: (index: number | null) => void;
 };
 
+const RESIZE_MODE_OPTIONS: { key: ResizeMode; label: string; sub: string }[] = [
+  { key: 'contain', label: 'Fit', sub: 'Show full video, may have black bars' },
+  { key: 'cover', label: 'Fill', sub: 'Crop to fill screen, no black bars' },
+  { key: 'stretch', label: 'Stretch', sub: 'Distort to fill — not recommended' },
+];
+
 function SettingsSheet({
   visible,
   onClose,
   rate,
   onSelectRate,
+  resizeMode,
+  onSelectResizeMode,
   videoTracks,
   selectedVideoTrack,
   onSelectVideoTrack,
@@ -589,6 +606,31 @@ function SettingsSheet({
               })}
             </>
           )}
+
+          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+            Aspect ratio
+          </Text>
+          {RESIZE_MODE_OPTIONS.map((opt) => {
+            const active = resizeMode === opt.key;
+            return (
+              <PickerRow
+                key={`r-${opt.key}`}
+                label={opt.label}
+                sub={opt.sub}
+                active={active}
+                onPress={() => onSelectResizeMode(opt.key)}
+              />
+            );
+          })}
+          <Text
+            style={[
+              styles.aspectHint,
+              { color: colors.mutedForeground, borderColor: colors.border },
+            ]}>
+            {
+              'Visible effect appears when the video aspect ratio differs from the player frame — e.g. fullscreen on a phone, or non-16:9 sources.'
+            }
+          </Text>
 
           <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Audio</Text>
           {audioTracks.length <= 1 ? (
@@ -952,5 +994,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#a1a1aa',
     paddingVertical: 8,
+  },
+  aspectHint: {
+    fontSize: 11,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    fontStyle: 'italic',
+    lineHeight: 15,
   },
 });
