@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
+import { useColorScheme } from '@/lib/useColorScheme';
+
 import { CastButton } from '../bridges';
 import { SettingsSheet } from './SettingsSheet';
 import { SkinScrubber } from './SkinScrubber';
@@ -51,6 +53,12 @@ export function DefaultSkin(props: SkinProps) {
   } = props;
 
   const ctrl = useSkinControlsState(props);
+  // Default skin tracks the app's current theme so the scrubber + active-state
+  // colors flip between light/dark mode. Netflix/YouTube keep their own brand
+  // colors regardless of theme — that matches how those products behave IRL.
+  const { colors } = useColorScheme();
+  const accentColor = colors.primary;
+  const retryColor = colors.primary;
 
   return (
     <>
@@ -66,7 +74,9 @@ export function DefaultSkin(props: SkinProps) {
         <View style={styles.errorOverlay}>
           <Ionicons name="warning" size={32} color="#fff" />
           <Text style={styles.errorText}>Playback failed</Text>
-          <Pressable onPress={onRetry} style={styles.retryBtn}>
+          <Pressable
+            onPress={onRetry}
+            style={[styles.retryBtn, { backgroundColor: retryColor }]}>
             <Ionicons name="refresh" size={16} color="#fff" />
             <Text style={styles.retryText}>Retry</Text>
           </Pressable>
@@ -176,9 +186,9 @@ export function DefaultSkin(props: SkinProps) {
               scrubbing={ctrl.scrubbing}
               spriteCue={ctrl.spriteCue}
               disabled={isLive || !state.isLoaded}
-              minimumTrackTintColor="#0a84ff"
+              minimumTrackTintColor={accentColor}
               maximumTrackTintColor="rgba(255,255,255,0.3)"
-              thumbTintColor="#0a84ff"
+              thumbTintColor={accentColor}
               onSlidingStart={ctrl.onScrubStart}
               onValueChange={ctrl.onScrubChange}
               onSlidingComplete={ctrl.onScrubComplete}
@@ -314,7 +324,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    backgroundColor: '#0a84ff',
+    // backgroundColor injected at runtime from the app theme
     borderRadius: 999,
   },
   retryText: { color: '#fff', fontWeight: '700', fontSize: 13 },

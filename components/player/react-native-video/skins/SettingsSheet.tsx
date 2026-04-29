@@ -71,7 +71,7 @@ export function SettingsSheet({
   skin,
   onSelectSkin,
 }: Props) {
-  const { colors } = useColorScheme();
+  const { colors, colorScheme, setColorScheme } = useColorScheme();
 
   return (
     <Modal
@@ -97,6 +97,22 @@ export function SettingsSheet({
           </View>
 
           <ScrollView style={styles.sheetBody} contentContainerStyle={{ paddingBottom: 8 }}>
+            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+              Appearance
+            </Text>
+            <PickerRow
+              label="Light"
+              sub="Bright UI for daytime viewing"
+              active={colorScheme === 'light'}
+              onPress={() => setColorScheme('light')}
+            />
+            <PickerRow
+              label="Dark"
+              sub="Dim UI for low-light viewing"
+              active={colorScheme === 'dark'}
+              onPress={() => setColorScheme('dark')}
+            />
+
             <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Skin</Text>
             {SKIN_OPTIONS.map((opt) => {
               const active = skin === opt.key;
