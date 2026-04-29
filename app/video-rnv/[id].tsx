@@ -22,7 +22,15 @@ export default function RnvVideoDetailsScreen() {
   return (
     <View className="flex-1 bg-background">
       <Stack.Screen options={{ title: video.title }} />
-      <VideoPlayer source={video} onRequestBack={() => router.back()} />
+      <VideoPlayer
+        source={video}
+        onRequestBack={() => router.back()}
+        // Free-form height — gives skins like Netflix breathing room for the
+        // top/bottom gradient overlays + actions row without overflowing into
+        // the metadata below. The Default and YouTube skins fit the same box
+        // happily; only Netflix needed the extra space.
+        style={{ aspectRatio: undefined, height: 260 }}
+      />
 
       <ScrollView
         style={{ flex: 1 }}

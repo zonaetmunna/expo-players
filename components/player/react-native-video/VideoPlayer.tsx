@@ -22,6 +22,7 @@ import { PlayerGestures } from './PlayerGestures';
 import { useCastSession } from './hooks/useCastSession';
 import { useRnvPlayerSnapshot } from './hooks/useRnvPlayerSnapshot';
 import type { ResizeMode } from './resizeMode';
+import type { SkinId } from './skins';
 import type { RnvSnapshot, VideoItem } from './types';
 
 type Props = {
@@ -31,6 +32,7 @@ type Props = {
   muted?: boolean;
   initialVolume?: number;
   initialResizeMode?: ResizeMode;
+  initialSkin?: SkinId;
   gesturesEnabled?: boolean;
   onRequestBack?: () => void;
   style?: ViewStyle;
@@ -84,6 +86,7 @@ export function VideoPlayer({
   muted = false,
   initialVolume = 1,
   initialResizeMode = 'contain',
+  initialSkin = 'default',
   gesturesEnabled = true,
   onRequestBack,
   style,
@@ -126,6 +129,7 @@ export function VideoPlayer({
   const [paused, setPaused] = useState(!autoPlay);
   const [rate, setRate] = useState(1);
   const [resizeMode, setResizeMode] = useState<ResizeMode>(initialResizeMode);
+  const [skin, setSkin] = useState<SkinId>(initialSkin);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -397,7 +401,13 @@ export function VideoPlayer({
   );
 
   const playerBody = (
-    <View style={isFullscreen ? styles.fullscreenContainer : styles.inlineContainer}>
+    <View
+      style={
+        isFullscreen
+          ? styles.fullscreenContainer
+          : [styles.inlineContainer, style]
+      }>
+
       <PlayerGestures
         snapshot={snapshot}
         isLive={!!source.isLive}
@@ -462,6 +472,8 @@ export function VideoPlayer({
         canCast={cast.canCast}
         isCasting={cast.isCasting}
         spriteThumbnails={source.spriteThumbnails}
+        skin={skin}
+        onSelectSkin={setSkin}
         onPlay={onPlay}
         onPause={onPause}
         onReplay={onReplay}
@@ -497,14 +509,16 @@ export function VideoPlayer({
     );
   }
 
-  return <View style={style}>{playerBody}</View>;
+  return playerBody;
 }
 
 const styles = StyleSheet.create({
   inlineContainer: {
     width: '100%',
-    aspectRatio: 16 / 9,
     backgroundColor: 'black',
+    // No fixed aspect ratio — the consumer screen decides the height via
+    // the `style` prop. Sensible default: 16:9 if the consumer didn't pass one.
+    aspectRatio: 16 / 9,
   },
   fullscreenContainer: {
     flex: 1,
