@@ -20,6 +20,8 @@ import type { ResizeMode } from './resizeMode';
 type Props = {
   snapshot: RnvSnapshotRef;
   isLive: boolean;
+  /** When true (paused / ended / not loaded), long-press 2x is disabled */
+  isPlayingState?: boolean;
   resizeMode: ResizeMode;
   onResizeModeChange: (next: ResizeMode) => void;
   seekTo: (time: number) => void;
@@ -49,6 +51,7 @@ function formatTime(seconds: number) {
 export function PlayerGestures({
   snapshot,
   isLive,
+  isPlayingState = true,
   resizeMode,
   onResizeModeChange,
   seekTo,
@@ -132,7 +135,13 @@ export function PlayerGestures({
     onUpdate: onBrightnessUpdate,
   });
   const pinch = usePinchZoom({ resizeMode, onChange: onResizeModeChange });
-  const longPress = useLongPressSpeed({ setRate, disabled: isLive, onChange: setBoosted });
+  const longPress = useLongPressSpeed({
+    setRate,
+    // Disable when live (no rate change makes sense), or when not actually playing
+    // (rate boost on a paused/ended video does nothing visible and confuses the user).
+    disabled: isLive || !isPlayingState,
+    onChange: setBoosted,
+  });
 
   const composed = useMemo(
     () =>
@@ -184,7 +193,7 @@ export function PlayerGestures({
           ]}>
           <Ionicons
             name={seekFlash.dir === 'forward' ? 'play-forward' : 'play-back'}
-            size={28}
+            size={18}
             color="#fff"
           />
           <Text style={styles.seekFlashText}>{seekFlash.seconds}s</Text>
@@ -231,21 +240,23 @@ export function PlayerGestures({
 const styles = StyleSheet.create({
   seekFlash: {
     position: 'absolute',
-    top: '40%',
-    width: '40%',
-    paddingVertical: 18,
+    top: '50%',
+    marginTop: -32, // half of height to vertically center
+    width: 64,
+    height: 64,
+    paddingVertical: 8,
     backgroundColor: 'rgba(0,0,0,0.55)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 16,
+    borderRadius: 32,
+    gap: 2,
   },
-  seekFlashLeft: { left: '5%' },
-  seekFlashRight: { right: '5%' },
+  seekFlashLeft: { left: '15%' },
+  seekFlashRight: { right: '15%' },
   seekFlashText: {
     color: '#fff',
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '700',
-    marginTop: 4,
     fontVariant: ['tabular-nums'],
   },
   centerHud: {

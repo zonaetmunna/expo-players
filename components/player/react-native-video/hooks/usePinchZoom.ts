@@ -1,5 +1,6 @@
+import { useMemo, useRef } from 'react';
 import { Gesture } from 'react-native-gesture-handler';
-import { runOnJS } from 'react-native-worklets';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import type { ResizeMode } from '../resizeMode';
 
@@ -9,15 +10,21 @@ type Options = {
 };
 
 export function usePinchZoom({ resizeMode, onChange }: Options) {
-  const handle = (scale: number) => {
-    if (scale > 1.1 && resizeMode !== 'cover') {
-      onChange('cover');
-    } else if (scale < 0.9 && resizeMode !== 'contain') {
-      onChange('contain');
-    }
-  };
+  const optsRef = useRef({ resizeMode, onChange });
+  optsRef.current = { resizeMode, onChange };
 
-  return Gesture.Pinch().onEnd((e) => {
-    runOnJS(handle)(e.scale);
-  });
+  return useMemo(() => {
+    const handle = (scale: number) => {
+      const o = optsRef.current;
+      if (scale > 1.1 && o.resizeMode !== 'cover') {
+        o.onChange('cover');
+      } else if (scale < 0.9 && o.resizeMode !== 'contain') {
+        o.onChange('contain');
+      }
+    };
+
+    return Gesture.Pinch().onEnd((e) => {
+      scheduleOnRN(handle, e.scale);
+    });
+  }, []);
 }

@@ -1,5 +1,6 @@
+import { useMemo, useRef } from 'react';
 import { Gesture } from 'react-native-gesture-handler';
-import { runOnJS } from 'react-native-worklets';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import type { RnvSnapshotRef } from './useRnvPlayerSnapshot';
 
@@ -20,21 +21,29 @@ export function useDoubleTapSeek({
   isLive,
   onSeek,
 }: Options) {
-  const handle = (dir: 'forward' | 'backward') => {
-    if (isLive) return;
-    const snap = snapshot.current;
-    if (!snap.isLoaded || !snap.duration) return;
-    const delta = dir === 'forward' ? seekSeconds : -seekSeconds;
-    const target = Math.max(0, Math.min(snap.duration, snap.currentTime + delta));
-    seek(target);
-    onSeek?.(dir, seekSeconds);
-  };
+  // Latest-options ref so the memoized gesture closure always sees fresh callbacks
+  // without forcing the gesture to be rebuilt every render.
+  const optsRef = useRef({ snapshot, seek, seekSeconds, isLive, onSeek });
+  optsRef.current = { snapshot, seek, seekSeconds, isLive, onSeek };
 
-  return Gesture.Tap()
-    .numberOfTaps(2)
-    .maxDuration(250)
-    .onEnd((event) => {
-      const isForward = event.x > layoutWidth / 2;
-      runOnJS(handle)(isForward ? 'forward' : 'backward');
-    });
+  return useMemo(() => {
+    const handle = (dir: 'forward' | 'backward') => {
+      const o = optsRef.current;
+      if (o.isLive) return;
+      const snap = o.snapshot.current;
+      if (!snap.isLoaded || !snap.duration) return;
+      const delta = dir === 'forward' ? o.seekSeconds : -o.seekSeconds;
+      const target = Math.max(0, Math.min(snap.duration, snap.currentTime + delta));
+      o.seek(target);
+      o.onSeek?.(dir, o.seekSeconds);
+    };
+
+    return Gesture.Tap()
+      .numberOfTaps(2)
+      .maxDuration(250)
+      .onEnd((event) => {
+        const isForward = event.x > layoutWidth / 2;
+        scheduleOnRN(handle, isForward ? 'forward' : 'backward');
+      });
+  }, [layoutWidth]);
 }

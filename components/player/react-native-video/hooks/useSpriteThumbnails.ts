@@ -128,12 +128,13 @@ export function useSpriteThumbnails(
     lastConfigKeyRef.current = key;
 
     let cancelled = false;
+    const controller = new AbortController();
     setError(null);
     setParsed(null);
 
     (async () => {
       try {
-        const res = await fetch(config.vttUri);
+        const res = await fetch(config.vttUri, { signal: controller.signal });
         if (!res.ok) {
           throw new Error(`HTTP ${res.status} fetching ${config.vttUri}`);
         }
@@ -157,6 +158,8 @@ export function useSpriteThumbnails(
         setParsed(result);
       } catch (e) {
         if (cancelled) return;
+        // Ignore abort errors — they're our own cancellations
+        if (e instanceof Error && e.name === 'AbortError') return;
         setError(e instanceof Error ? e.message : 'Failed to load thumbnails');
         setParsed(null);
       }
@@ -164,6 +167,7 @@ export function useSpriteThumbnails(
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [config?.vttUri, config?.spriteUri, config]);
 

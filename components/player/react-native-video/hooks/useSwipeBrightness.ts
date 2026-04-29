@@ -1,9 +1,14 @@
-import * as Brightness from 'expo-brightness';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Platform } from 'react-native';
 import { Gesture } from 'react-native-gesture-handler';
 import { useSharedValue } from 'react-native-reanimated';
-import { runOnJS } from 'react-native-worklets';
+import { scheduleOnRN } from 'react-native-worklets';
+
+import {
+  getBrightnessAsync,
+  requestPermissionsAsync,
+  setBrightnessAsync,
+} from '../bridges';
 
 type Options = {
   layoutWidth: number;
@@ -24,8 +29,18 @@ export function useSwipeBrightness({ layoutWidth, layoutHeight, onUpdate }: Opti
     if (!supported) return;
     let cancelled = false;
     (async () => {
+      // On Android, system-brightness writes need WRITE_SETTINGS. App-brightness
+      // (which expo-brightness uses by default) does not — but requesting first
+      // avoids a silent failure on the first gesture frame.
+      if (Platform.OS === 'android') {
+        try {
+          await requestPermissionsAsync();
+        } catch {
+          // permission may already be granted, or user dismissed — proceed anyway
+        }
+      }
       try {
-        const v = await Brightness.getBrightnessAsync();
+        const v = await getBrightnessAsync();
         if (!cancelled) {
           lastValueRef.current = v;
           startBrightness.value = v;
@@ -39,53 +54,57 @@ export function useSwipeBrightness({ layoutWidth, layoutHeight, onUpdate }: Opti
     };
   }, [supported, startBrightness]);
 
-  if (!supported) {
-    return Gesture.Pan().enabled(false);
-  }
+  const onUpdateRef = useRef(onUpdate);
+  onUpdateRef.current = onUpdate;
 
-  const captureStart = () => {
-    startBrightness.value = lastValueRef.current;
-  };
-
-  const apply = async (v: number) => {
-    const next = Math.max(0, Math.min(1, v));
-    if (permissionDeniedRef.current) return;
-    try {
-      await Brightness.setBrightnessAsync(next);
-      lastValueRef.current = next;
-      onUpdate?.(next);
-    } catch {
-      // Lock out further attempts so we don't spam null updates
-      permissionDeniedRef.current = true;
-      onUpdate?.(null);
+  return useMemo(() => {
+    if (!supported) {
+      return Gesture.Pan().enabled(false);
     }
-  };
 
-  const finish = (wasActive: boolean) => {
-    if (wasActive) {
-      onUpdate?.(null);
-    }
-  };
+    const captureStart = () => {
+      startBrightness.value = lastValueRef.current;
+    };
 
-  return Gesture.Pan()
-    .activeOffsetY([-12, 12])
-    .failOffsetX([-20, 20])
-    .onBegin((e) => {
-      if (e.x >= layoutWidth / 2) {
-        active.value = false;
-        return;
+    const apply = async (v: number) => {
+      const next = Math.max(0, Math.min(1, v));
+      if (permissionDeniedRef.current) return;
+      try {
+        await setBrightnessAsync(next);
+        lastValueRef.current = next;
+        onUpdateRef.current?.(next);
+      } catch {
+        permissionDeniedRef.current = true;
+        onUpdateRef.current?.(null);
       }
-      active.value = true;
-      runOnJS(captureStart)();
-    })
-    .onUpdate((e) => {
-      if (!active.value) return;
-      const ratio = -e.translationY / Math.max(1, layoutHeight);
-      runOnJS(apply)(startBrightness.value + ratio);
-    })
-    .onFinalize(() => {
-      const wasActive = active.value;
-      active.value = false;
-      runOnJS(finish)(wasActive);
-    });
+    };
+
+    const finish = (wasActive: boolean) => {
+      if (wasActive) {
+        onUpdateRef.current?.(null);
+      }
+    };
+
+    return Gesture.Pan()
+      .activeOffsetY([-12, 12])
+      .failOffsetX([-20, 20])
+      .onBegin((e) => {
+        if (e.x >= layoutWidth / 2) {
+          active.value = false;
+          return;
+        }
+        active.value = true;
+        scheduleOnRN(captureStart);
+      })
+      .onUpdate((e) => {
+        if (!active.value) return;
+        const ratio = -e.translationY / Math.max(1, layoutHeight);
+        scheduleOnRN(apply, startBrightness.value + ratio);
+      })
+      .onFinalize(() => {
+        const wasActive = active.value;
+        active.value = false;
+        scheduleOnRN(finish, wasActive);
+      });
+  }, [layoutWidth, layoutHeight, startBrightness, active, supported]);
 }

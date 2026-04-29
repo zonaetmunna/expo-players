@@ -10,7 +10,8 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import GoogleCast from 'react-native-google-cast';
+
+import { GoogleCast } from '@/components/player/react-native-video/bridges';
 
 
 import { ThemeToggle } from '@/components/nativewindui/ThemeToggle';

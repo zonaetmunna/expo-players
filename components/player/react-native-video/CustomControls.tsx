@@ -12,7 +12,7 @@ import {
   View,
   type LayoutChangeEvent,
 } from 'react-native';
-import { CastButton } from 'react-native-google-cast';
+import { CastButton } from './bridges';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import { useColorScheme } from '@/lib/useColorScheme';
@@ -59,6 +59,7 @@ type Props = {
   rate: number;
   isFullscreen: boolean;
   canCast?: boolean;
+  isCasting?: boolean;
   spriteThumbnails?: SpriteThumbnails;
   onPlay: () => void;
   onPause: () => void;
@@ -99,6 +100,7 @@ export function CustomControls({
   rate,
   isFullscreen,
   canCast = false,
+  isCasting = false,
   spriteThumbnails,
   onPlay,
   onPause,
@@ -129,8 +131,42 @@ export function CustomControls({
     setSliderWidth(e.nativeEvent.layout.width);
   };
 
+  // Debounced single-tap: defer toggling controls long enough that a double-tap
+  // (handled by the gesture layer for ±10s seek) cancels it. Without this,
+  // every double-tap flashes the controls visible from its first tap.
+  const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleTapLayerPress = () => {
+    if (tapTimerRef.current) {
+      // Second tap within window — assume it's a double-tap, do nothing
+      clearTimeout(tapTimerRef.current);
+      tapTimerRef.current = null;
+      return;
+    }
+    tapTimerRef.current = setTimeout(() => {
+      tapTimerRef.current = null;
+      autoHide.toggle();
+    }, 280);
+  };
+  useEffect(() => {
+    return () => {
+      if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+    };
+  }, []);
+
+  // When user starts a cast session, auto-close the settings sheet so the native
+  // device picker has clean stacking — avoids the modal-on-modal layering issue.
+  useEffect(() => {
+    if (isCasting && settingsOpen) {
+      setSettingsOpen(false);
+    }
+  }, [isCasting, settingsOpen]);
+
   const showLoading = !state.isLoaded && !hasError;
-  const pinned = scrubbing || settingsOpen || !state.isPlaying || showLoading || hasError;
+  // Pin controls only when there's an active interaction (scrubbing, settings open)
+  // or a blocking state (loading, error). Paused playback no longer pins — matches
+  // YouTube/Netflix where controls auto-hide even when paused, and stay out of the
+  // way during double-tap seeks etc.
+  const pinned = scrubbing || settingsOpen || showLoading || hasError;
   const autoHide = useControlsAutoHide({ pinned });
   const visible = autoHide.visible;
 
@@ -151,10 +187,15 @@ export function CustomControls({
 
   // Safety net: if the player never reaches the seek target (e.g. stalled),
   // release the lock after 5 seconds so the slider can follow currentTime again.
+  // Also clear `scrubbing` defensively in case onSlidingComplete didn't fire
+  // (rare on Android when finger leaves slider rect).
   const seekTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (seekPending == null) return;
-    seekTimeoutRef.current = setTimeout(() => setSeekPending(null), 5000);
+    seekTimeoutRef.current = setTimeout(() => {
+      setSeekPending(null);
+      setScrubbing(false);
+    }, 5000);
     return () => {
       if (seekTimeoutRef.current) {
         clearTimeout(seekTimeoutRef.current);
@@ -190,7 +231,13 @@ export function CustomControls({
     autoHide.show();
   };
 
+  // Throttle slider value updates — slider can fire 60×/s on Android, but the
+  // sprite bubble + time display only need ~20Hz. Reduces re-render cost ~3×.
+  const lastScrubUpdateRef = useRef(0);
   const onScrubChange = (value: number) => {
+    const now = Date.now();
+    if (now - lastScrubUpdateRef.current < 50) return;
+    lastScrubUpdateRef.current = now;
     setScrubValue(value);
   };
 
@@ -215,8 +262,8 @@ export function CustomControls({
 
   return (
     <>
-      {/* Tap area to toggle controls */}
-      <Pressable style={styles.tapLayer} onPress={autoHide.toggle} />
+      {/* Tap area to toggle controls — debounced so double-taps don't flash controls */}
+      <Pressable style={styles.tapLayer} onPress={handleTapLayerPress} />
 
       {/* Loading spinner */}
       {showLoading ? (
@@ -225,13 +272,8 @@ export function CustomControls({
         </View>
       ) : null}
 
-      {/* Buffering indicator (only while playing) */}
-      {state.isLoaded && state.buffering && state.isPlaying ? (
-        <View pointerEvents="none" style={styles.bufferingPill}>
-          <ActivityIndicator size="small" color="#fff" />
-          <Text style={styles.bufferingText}>Buffering…</Text>
-        </View>
-      ) : null}
+      {/* Buffering indicator removed — the center play button already shows a spinner
+          during seek/buffer states (see togglePlay button below). */}
 
       {/* Error UI */}
       {hasError ? (
@@ -274,7 +316,12 @@ export function CustomControls({
             </View>
             <View style={styles.topRight}>
               {onRequestPiP && Platform.OS !== 'web' ? (
-                <Pressable onPress={onRequestPiP} hitSlop={8} style={styles.iconBtn}>
+                <Pressable
+                  onPress={onRequestPiP}
+                  hitSlop={8}
+                  style={styles.iconBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel="Picture in picture">
                   <Ionicons name="albums-outline" size={20} color="#fff" />
                 </Pressable>
               ) : null}
@@ -289,7 +336,9 @@ export function CustomControls({
                   autoHide.show();
                 }}
                 hitSlop={8}
-                style={styles.iconBtn}>
+                style={styles.iconBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Player settings">
                 <Ionicons name="settings-sharp" size={20} color="#fff" />
               </Pressable>
             </View>
@@ -301,6 +350,8 @@ export function CustomControls({
               onPress={() => seekRelative(-10)}
               hitSlop={12}
               disabled={isLive || !state.isLoaded}
+              accessibilityRole="button"
+              accessibilityLabel="Seek backward 10 seconds"
               style={[styles.seekBtn, (isLive || !state.isLoaded) && styles.btnDisabled]}>
               <Ionicons name="play-back" size={26} color="#fff" />
             </Pressable>
@@ -308,17 +359,35 @@ export function CustomControls({
               onPress={togglePlay}
               hitSlop={12}
               style={styles.playBtn}
-              disabled={!state.isLoaded}>
-              <Ionicons
-                name={isEnded ? 'refresh' : state.isPlaying ? 'pause' : 'play'}
-                size={32}
-                color="#fff"
-              />
+              disabled={!state.isLoaded}
+              accessibilityRole="button"
+              accessibilityLabel={
+                seekPending != null
+                  ? 'Seeking'
+                  : state.buffering
+                    ? 'Buffering'
+                    : isEnded
+                      ? 'Replay'
+                      : state.isPlaying
+                        ? 'Pause'
+                        : 'Play'
+              }>
+              {seekPending != null || state.buffering ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Ionicons
+                  name={isEnded ? 'refresh' : state.isPlaying ? 'pause' : 'play'}
+                  size={32}
+                  color="#fff"
+                />
+              )}
             </Pressable>
             <Pressable
               onPress={() => seekRelative(10)}
               hitSlop={12}
               disabled={isLive || !state.isLoaded}
+              accessibilityRole="button"
+              accessibilityLabel="Seek forward 10 seconds"
               style={[styles.seekBtn, (isLive || !state.isLoaded) && styles.btnDisabled]}>
               <Ionicons name="play-forward" size={26} color="#fff" />
             </Pressable>

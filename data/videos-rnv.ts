@@ -304,8 +304,9 @@ export const VIDEOS: VideoItem[] = [
   {
     id: 'rnv-broken-404',
     title: 'Broken URL (404 — error UI test)',
-    description: 'Deliberately dead URL for verifying retry / error UI.',
-    uri: 'https://example.com/nonexistent-video-404.mp4',
+    description:
+      'httpbin returns a real 404 — exercises the player error overlay + retry button.',
+    uri: 'https://httpbin.org/status/404',
     type: 'mp4',
     category: 'edge-case',
     codecVideo: 'h264',

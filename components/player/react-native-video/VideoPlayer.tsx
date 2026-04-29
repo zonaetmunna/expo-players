@@ -1,14 +1,17 @@
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, Platform, StatusBar, StyleSheet, View, type ViewStyle } from 'react-native';
+import { Modal, Platform, StatusBar, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import Video, {
+  DRMType,
+  SelectedTrackType,
+  SelectedVideoTrackType,
+  TextTrackType,
   type ISO639_1,
   type OnLoadData,
   type OnProgressData,
   type OnVideoErrorData,
   type SelectedTrack,
   type SelectedVideoTrack,
-  type TextTrackType,
   type VideoRef,
 } from 'react-native-video';
 
@@ -32,19 +35,29 @@ type Props = {
   style?: ViewStyle;
 };
 
+/** Round B5 — DRM source validation. Returns false for malformed configs that would
+ * hang FairPlay setup or trigger silent failures inside rn-video. */
+function isValidDrm(drm: { type: string; licenseServer: string }): boolean {
+  if (!drm) return false;
+  if (typeof drm.licenseServer !== 'string' || drm.licenseServer.trim() === '') return false;
+  if (!/^https?:\/\//i.test(drm.licenseServer)) return false;
+  const validTypes = ['widevine', 'fairplay', 'playready', 'clearkey'];
+  return validTypes.includes(drm.type);
+}
+
 function mapVideoTrackSelection(sel: number | 'auto'): SelectedVideoTrack {
-  if (sel === 'auto') return { type: 'auto' as never };
-  return { type: 'index' as never, value: sel };
+  if (sel === 'auto') return { type: SelectedVideoTrackType.AUTO };
+  return { type: SelectedVideoTrackType.INDEX, value: sel };
 }
 
 function mapAudioTrackSelection(sel: number | null): SelectedTrack | undefined {
   if (sel === null) return undefined;
-  return { type: 'index' as never, value: sel };
+  return { type: SelectedTrackType.INDEX, value: sel };
 }
 
 function mapTextTrackSelection(sel: number | null): SelectedTrack {
-  if (sel === null) return { type: 'disabled' as never };
-  return { type: 'index' as never, value: sel };
+  if (sel === null) return { type: SelectedTrackType.DISABLED };
+  return { type: SelectedTrackType.INDEX, value: sel };
 }
 
 export function VideoPlayer({
@@ -76,6 +89,22 @@ export function VideoPlayer({
     textTracks: [],
     selectedTextTrack: null,
   });
+
+  // Compatibility check: surface a banner instead of mounting <Video> with sources
+  // that the platform fundamentally can't decode (rn-video would emit an opaque
+  // error otherwise).
+  const compatError = (() => {
+    if (Platform.OS === 'ios' && source.type === 'dash') {
+      return 'MPEG-DASH is not supported on iOS. Use HLS or progressive MP4 instead.';
+    }
+    if (Platform.OS === 'ios' && source.type === 'webm') {
+      return 'WebM is not supported on iOS. Use MP4 or HLS instead.';
+    }
+    if (Platform.OS === 'ios' && source.type === 'ogg') {
+      return 'OGG/Theora is not supported on iOS.';
+    }
+    return null;
+  })();
 
   const [paused, setPaused] = useState(!autoPlay);
   const [rate, setRate] = useState(1);
@@ -109,6 +138,14 @@ export function VideoPlayer({
     onCastEnd: handleCastEnd,
   });
 
+  // Reset transient playback state when the source changes (different video selected)
+  useEffect(() => {
+    setIsEnded(false);
+    setError(null);
+    setPaused(!autoPlay);
+    setRate(1);
+  }, [source.id, autoPlay]);
+
   // Reset orientation + restore status bar on unmount
   useEffect(() => {
     return () => {
@@ -139,6 +176,9 @@ export function VideoPlayer({
 
   // === Imperative actions — routed to cast session when casting, else local ===
   const seekTo = (time: number) => {
+    // Live streams have no defined timeline — block seek to avoid sending invalid
+    // positions to the player or to the Cast receiver (which may interpret weirdly).
+    if (source.isLive) return;
     // Any seek that goes back from the end should clear the "ended" flag
     setIsEnded(false);
     cast.remoteSeek(time).then((handled) => {
@@ -266,9 +306,16 @@ export function VideoPlayer({
   };
 
   const handleError = (e: OnVideoErrorData) => {
-    // Dump every property of the error object so we can see what platform reports
+    // Dump every property of the error object so we can see what platform reports.
+    // Native error payloads on iOS sometimes contain circular references → guard JSON.stringify.
+    let serialized: string;
+    try {
+      serialized = JSON.stringify(e, null, 2);
+    } catch {
+      serialized = String(e);
+    }
     // eslint-disable-next-line no-console
-    console.warn('[rn-video] onError raw:', JSON.stringify(e, null, 2));
+    console.warn('[rn-video] onError raw:', serialized);
 
     const err = (e?.error ?? e) as Record<string, unknown> | undefined;
     const parts: string[] = [];
@@ -302,15 +349,16 @@ export function VideoPlayer({
       uri: source.uri,
       // Let rn-video auto-detect from the URL extension (.m3u8 / .mpd / .mp4).
       headers: source.drm?.headers,
-      drm: source.drm
-        ? {
-            type: source.drm.type as never,
-            licenseServer: source.drm.licenseServer,
-            headers: source.drm.headers,
-            contentId: source.drm.contentId,
-            certificateUrl: source.drm.certificateUrl,
-          }
-        : undefined,
+      drm:
+        source.drm && isValidDrm(source.drm)
+          ? {
+              type: source.drm.type as DRMType,
+              licenseServer: source.drm.licenseServer,
+              headers: source.drm.headers,
+              contentId: source.drm.contentId,
+              certificateUrl: source.drm.certificateUrl,
+            }
+          : undefined,
       metadata: {
         title: source.title,
         description: source.description,
@@ -336,6 +384,7 @@ export function VideoPlayer({
       <PlayerGestures
         snapshot={snapshot}
         isLive={!!source.isLive}
+        isPlayingState={state.isPlaying && !isEnded}
         resizeMode={resizeMode}
         onResizeModeChange={setResizeMode}
         seekTo={seekTo}
@@ -377,6 +426,12 @@ export function VideoPlayer({
         />
       ) : null}
 
+      {compatError ? (
+        <View style={styles.compatBanner} pointerEvents="none">
+          <Text style={styles.compatBannerText}>{compatError}</Text>
+        </View>
+      ) : null}
+
       <CustomControls
         snapshot={snapshot}
         state={state}
@@ -387,6 +442,7 @@ export function VideoPlayer({
         rate={rate}
         isFullscreen={isFullscreen}
         canCast={cast.canCast}
+        isCasting={cast.isCasting}
         spriteThumbnails={source.spriteThumbnails}
         onPlay={onPlay}
         onPause={onPause}
@@ -434,5 +490,21 @@ const styles = StyleSheet.create({
   fullscreenContainer: {
     flex: 1,
     backgroundColor: 'black',
+  },
+  compatBanner: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(220, 38, 38, 0.92)',
+    zIndex: 10,
+  },
+  compatBannerText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });

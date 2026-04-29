@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Platform } from 'react-native';
 import { Gesture } from 'react-native-gesture-handler';
-import { VolumeManager } from 'react-native-volume-manager';
 import { useSharedValue } from 'react-native-reanimated';
-import { runOnJS } from 'react-native-worklets';
+import { scheduleOnRN } from 'react-native-worklets';
+
+import { VolumeManager } from '../bridges';
 
 type Options = {
   layoutWidth: number;
@@ -58,50 +59,55 @@ export function useSwipeVolume({ layoutWidth, layoutHeight, onUpdate }: Options)
     };
   }, [startVolume]);
 
-  if (!supported) {
-    return Gesture.Pan().enabled(false);
-  }
+  const onUpdateRef = useRef(onUpdate);
+  onUpdateRef.current = onUpdate;
 
-  const captureStart = () => {
-    startVolume.value = lastValueRef.current;
-  };
-
-  const apply = async (v: number) => {
-    const next = Math.max(0, Math.min(1, v));
-    lastValueRef.current = next;
-    onUpdate?.(next);
-    try {
-      await VolumeManager.setVolume(next, { showUI: false } as never);
-    } catch {
-      // ignore — set may fail if audio session not active
+  return useMemo(() => {
+    if (!supported) {
+      return Gesture.Pan().enabled(false);
     }
-  };
 
-  const finish = (wasActive: boolean) => {
-    if (wasActive) {
-      onUpdate?.(null);
-    }
-  };
+    const captureStart = () => {
+      startVolume.value = lastValueRef.current;
+    };
 
-  return Gesture.Pan()
-    .activeOffsetY([-12, 12])
-    .failOffsetX([-20, 20])
-    .onBegin((e) => {
-      if (e.x < layoutWidth / 2) {
-        active.value = false;
-        return;
+    const apply = async (v: number) => {
+      const next = Math.max(0, Math.min(1, v));
+      lastValueRef.current = next;
+      onUpdateRef.current?.(next);
+      try {
+        await VolumeManager.setVolume(next, { showUI: false } as never);
+      } catch {
+        // ignore — set may fail if audio session not active
       }
-      active.value = true;
-      runOnJS(captureStart)();
-    })
-    .onUpdate((e) => {
-      if (!active.value) return;
-      const ratio = -e.translationY / Math.max(1, layoutHeight);
-      runOnJS(apply)(startVolume.value + ratio);
-    })
-    .onFinalize(() => {
-      const wasActive = active.value;
-      active.value = false;
-      runOnJS(finish)(wasActive);
-    });
+    };
+
+    const finish = (wasActive: boolean) => {
+      if (wasActive) {
+        onUpdateRef.current?.(null);
+      }
+    };
+
+    return Gesture.Pan()
+      .activeOffsetY([-12, 12])
+      .failOffsetX([-20, 20])
+      .onBegin((e) => {
+        if (e.x < layoutWidth / 2) {
+          active.value = false;
+          return;
+        }
+        active.value = true;
+        scheduleOnRN(captureStart);
+      })
+      .onUpdate((e) => {
+        if (!active.value) return;
+        const ratio = -e.translationY / Math.max(1, layoutHeight);
+        scheduleOnRN(apply, startVolume.value + ratio);
+      })
+      .onFinalize(() => {
+        const wasActive = active.value;
+        active.value = false;
+        scheduleOnRN(finish, wasActive);
+      });
+  }, [layoutWidth, layoutHeight, startVolume, active]);
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+
 import {
   CastState,
   MediaStreamType,
@@ -6,7 +7,7 @@ import {
   useCastState,
   useRemoteMediaClient,
   useStreamPosition,
-} from 'react-native-google-cast';
+} from '../bridges';
 
 import type { VideoItem } from '../types';
 
@@ -24,6 +25,13 @@ type Options = {
   onCastStart?: () => void;
   /** Called when casting ends — caller can resume local at returned position (seconds) */
   onCastEnd?: (lastPositionSec: number) => void;
+  /**
+   * When the player unmounts:
+   *  - 'keep' (default, matches YouTube/Netflix): leave the receiver playing so the
+   *    user can navigate the app while their TV continues. Local app loses control.
+   *  - 'stop': stop the receiver session entirely.
+   */
+  onUnmount?: 'keep' | 'stop';
 };
 
 /**
@@ -35,7 +43,12 @@ type Options = {
  *  - Exposes routed control actions (play / pause / seek / setVolume / setRate)
  *    that operate on the cast session when active
  */
-export function useCastSession({ source, onCastStart, onCastEnd }: Options) {
+export function useCastSession({
+  source,
+  onCastStart,
+  onCastEnd,
+  onUnmount = 'keep',
+}: Options) {
   const client = useRemoteMediaClient();
   const device = useCastDevice();
   const castState = useCastState();
@@ -102,6 +115,19 @@ export function useCastSession({ source, onCastStart, onCastEnd }: Options) {
       lastLoadedSourceIdRef.current = null; // ready to reload next time
     }
   }, [isCasting, onCastStart, onCastEnd]);
+
+  // Unmount cleanup:
+  //  - reset the loaded-source guard so re-mount will re-load the receiver
+  //  - optionally stop the receiver session if config demands it
+  //  ('keep' is the default and matches YouTube/Netflix behaviour)
+  useEffect(() => {
+    return () => {
+      lastLoadedSourceIdRef.current = null;
+      if (onUnmount === 'stop' && client) {
+        client.stop().catch(() => {});
+      }
+    };
+  }, [client, onUnmount]);
 
   // Routed control actions — operate on cast session when active, return false if not handled
   const remotePlay = useCallback(async () => {
