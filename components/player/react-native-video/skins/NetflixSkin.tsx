@@ -36,7 +36,9 @@ export function NetflixSkin(props: SkinProps) {
     title,
     isLive,
     hasError,
-    errorMessage,
+    errorTitle,
+    errorHint,
+    errorRetryable = true,
     isEnded = false,
     isInAdBreak = false,
     rate,
@@ -82,16 +84,18 @@ export function NetflixSkin(props: SkinProps) {
       {hasError ? (
         <View style={styles.errorOverlay}>
           <Ionicons name="warning" size={36} color={NETFLIX_RED} />
-          <Text style={styles.errorText}>Playback failed</Text>
-          {errorMessage ? (
+          <Text style={styles.errorText}>{errorTitle ?? 'Playback failed'}</Text>
+          {errorHint ? (
             <Text style={styles.errorDetail} numberOfLines={4}>
-              {errorMessage}
+              {errorHint}
             </Text>
           ) : null}
-          <Pressable onPress={onRetry} style={styles.retryBtn}>
-            <Ionicons name="refresh" size={16} color="#fff" />
-            <Text style={styles.retryText}>Retry</Text>
-          </Pressable>
+          {errorRetryable ? (
+            <Pressable onPress={onRetry} style={styles.retryBtn}>
+              <Ionicons name="refresh" size={16} color="#fff" />
+              <Text style={styles.retryText}>Retry</Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 

@@ -33,8 +33,14 @@ export type SkinProps = {
   title: string;
   isLive: boolean;
   hasError: boolean;
-  /** Optional human-readable error message — shown by skins below the error icon. */
-  errorMessage?: string | null;
+  /**
+   * Structured error info — title shown as the headline, hint as the
+   * one-line recovery suggestion, retryable hides the Retry button when
+   * tapping it cannot help (e.g. 404, codec missing).
+   */
+  errorTitle?: string;
+  errorHint?: string;
+  errorRetryable?: boolean;
   isEnded?: boolean;
   /**
    * True while IMA is rendering an ad (between CONTENT_PAUSE_REQUESTED and

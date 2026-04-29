@@ -28,6 +28,7 @@ import {
   type AdPlayerState,
 } from './ads';
 import { describeDrmError, isDrmSchemeSupported, mapDrm, validateDrm } from './drm';
+import { describeError, type FriendlyError } from './errors';
 import { useCastSession } from './hooks/useCastSession';
 import { useRnvPlayerSnapshot } from './hooks/useRnvPlayerSnapshot';
 import type { ResizeMode } from './resizeMode';
@@ -154,7 +155,7 @@ export function VideoPlayer({
   const [resizeMode, setResizeMode] = useState<ResizeMode>(initialResizeMode);
   const [skin, setSkin] = useState<SkinId>(initialSkin);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<FriendlyError | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [isEnded, setIsEnded] = useState(false);
   // IMA ad state — driven by onReceiveAdEvent. The IMA SDK renders the actual
@@ -357,8 +358,9 @@ export function VideoPlayer({
   };
 
   const handleError = (e: OnVideoErrorData) => {
-    // Dump every property of the error object so we can see what platform reports.
-    // Native error payloads on iOS sometimes contain circular references → guard JSON.stringify.
+    // Always log the raw payload at warn level so diagnostics survive even when
+    // the user sees a friendly summary. Native error objects on iOS sometimes
+    // contain circular references → guard JSON.stringify.
     let serialized: string;
     try {
       serialized = JSON.stringify(e, null, 2);
@@ -368,35 +370,24 @@ export function VideoPlayer({
     // eslint-disable-next-line no-console
     console.warn('[rn-video] onError raw:', serialized);
 
-    // If the source uses DRM and the error matches a known DRM signature, surface
-    // a tailored message — much more actionable than the raw native error string.
+    // 1. DRM-specific errors take priority — they have a much more actionable
+    //    message than anything the generic classifier could produce.
     if (source.drm) {
       const drmMsg = describeDrmError(e);
       if (drmMsg) {
-        setError(drmMsg);
+        setError({
+          title: 'Cannot play this video',
+          hint: drmMsg,
+          retryable: false,
+          category: 'unknown',
+        });
         return;
       }
     }
 
-    const err = (e?.error ?? e) as Record<string, unknown> | undefined;
-    const parts: string[] = [];
-    if (err) {
-      for (const key of [
-        'errorString',
-        'localizedDescription',
-        'localizedFailureReason',
-        'errorCode',
-        'code',
-        'domain',
-        'errorException',
-        'errorStackTrace',
-      ]) {
-        const v = err[key];
-        if (v != null && v !== '') parts.push(`${key}: ${String(v).slice(0, 100)}`);
-      }
-    }
-    const msg = parts.length > 0 ? parts.join('\n') : 'Playback failed (no error details)';
-    setError(msg);
+    // 2. Generic classifier handles everything else: HTTP status codes,
+    //    network/timeout, codec/format problems, manifest parse errors, etc.
+    setError(describeError(e));
   };
 
   const handleVolumeChange = ({ volume }: { volume: number }) => {
@@ -517,7 +508,9 @@ export function VideoPlayer({
         title={source.title}
         isLive={!!source.isLive}
         hasError={!!error}
-        errorMessage={error}
+        errorTitle={error?.title}
+        errorHint={error?.hint}
+        errorRetryable={error?.retryable}
         isInAdBreak={adState.inAdBreak}
         isEnded={isEnded}
         rate={rate}

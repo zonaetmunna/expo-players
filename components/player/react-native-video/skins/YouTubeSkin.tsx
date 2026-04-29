@@ -36,7 +36,9 @@ export function YouTubeSkin(props: SkinProps) {
     title,
     isLive,
     hasError,
-    errorMessage,
+    errorTitle,
+    errorHint,
+    errorRetryable = true,
     isEnded = false,
     isInAdBreak = false,
     rate,
@@ -83,15 +85,17 @@ export function YouTubeSkin(props: SkinProps) {
       {hasError ? (
         <View style={styles.errorOverlay}>
           <Ionicons name="alert-circle" size={36} color={YT_RED} />
-          <Text style={styles.errorText}>Playback error</Text>
-          {errorMessage ? (
+          <Text style={styles.errorText}>{errorTitle ?? 'Playback error'}</Text>
+          {errorHint ? (
             <Text style={styles.errorDetail} numberOfLines={4}>
-              {errorMessage}
+              {errorHint}
             </Text>
           ) : null}
-          <Pressable onPress={onRetry} style={styles.retryBtn}>
-            <Text style={styles.retryText}>RETRY</Text>
-          </Pressable>
+          {errorRetryable ? (
+            <Pressable onPress={onRetry} style={styles.retryBtn}>
+              <Text style={styles.retryText}>RETRY</Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 

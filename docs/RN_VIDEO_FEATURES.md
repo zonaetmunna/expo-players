@@ -427,12 +427,13 @@ We ship in rounds. Pick one, build it, update boxes here, move on.
 
 | Status | Feature | Source | Notes |
 |:-:|---|---|---|
-| ✅ | Friendly error messages | custom | error overlay in all 3 skins |
+| ✅ | Friendly error messages | custom | `errors.ts` → `describeError()` classifies network / HTTP / timeout / codec / parse / cancelled. Title + hint + retryable flag. |
 | ✅ | DRM-specific error messages | custom | `describeDrmError` — license/key/scheme |
-| ✅ | Retry mechanism | custom | `reloadKey` increment forces remount |
+| ✅ | Retry mechanism | custom | `reloadKey` increment forces remount; hidden when `retryable: false` (404, codec missing) |
+| ✅ | HTTP status code parsing | custom | extracts 401 / 403 / 404 / 5xx from raw payload, surfaces tailored message per code |
 | ✅ | Compatibility banner | custom | DASH/WebM/Ogg on iOS, DRM on web/wrong-platform, Ads on web |
 | ✅ | Ad error → content continues | custom | doesn't block content playback |
-| ✅ | Debug logs | custom | console — onError / onLoad / onAdEvent |
+| ✅ | Debug logs | custom | console — full raw payload always logged at warn level for diagnostics |
 | 🔨 | Network fallback | custom | + `expo-network` |
 | 🔨 | Source fallback (multi-URL) | custom | source list + iteration |
 
