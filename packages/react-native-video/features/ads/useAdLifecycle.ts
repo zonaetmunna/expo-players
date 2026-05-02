@@ -9,7 +9,7 @@
 import { useCallback, useState } from 'react';
 import type { OnReceiveAdEventData } from 'react-native-video';
 
-import { type AdPlayerState, INITIAL_AD_STATE, reduceAdEvent } from '../ads';
+import { type AdPlayerState, INITIAL_AD_STATE, reduceAdEvent } from './ads';
 
 export type AdLifecycle = {
   /** Current ad state — `inAdBreak` is what skins read to hide chrome. */

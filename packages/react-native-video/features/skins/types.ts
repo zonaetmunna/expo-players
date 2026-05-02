@@ -2,9 +2,9 @@
 // and renders the controls layer. The router (CustomControls.tsx) picks one
 // skin at a time based on the `skin` prop on VideoPlayer.
 
-import type { RnvSnapshotRef } from '../hooks/useRnvPlayerSnapshot';
-import type { ResizeMode } from '../resizeMode';
-import type { RnvSnapshot, SpriteThumbnails } from '../types';
+import type { ResizeMode } from '../../core/resizeMode';
+import type { RnvSnapshotRef } from '../../core/useRnvPlayerSnapshot';
+import type { RnvSnapshot, SpriteThumbnails } from '../../types/types';
 
 export type SkinId = 'default' | 'netflix' | 'youtube';
 

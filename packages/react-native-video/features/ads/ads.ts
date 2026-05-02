@@ -8,7 +8,7 @@
 import { Platform } from 'react-native';
 import type { AdConfig } from 'react-native-video';
 
-import type { VideoAds } from './types';
+import type { VideoAds } from '../../types/types';
 
 /**
  * IMA SDK is built into rn-video on iOS + Android only. Web is not supported

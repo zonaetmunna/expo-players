@@ -9,7 +9,7 @@
 import { Platform } from 'react-native';
 import { DRMType, type Drm } from 'react-native-video';
 
-import type { DRMScheme, VideoDRM } from './types';
+import type { DRMScheme, VideoDRM } from '../../types/types';
 
 /** Fields rn-video's onError payload may include — varies per platform. */
 type RnvErrorShape = {

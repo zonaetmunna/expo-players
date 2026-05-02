@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react';
 import { Gesture } from 'react-native-gesture-handler';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import type { RnvSnapshotRef } from './useRnvPlayerSnapshot';
+import type { RnvSnapshotRef } from '../../core/useRnvPlayerSnapshot';
 
 type Options = {
   snapshot: RnvSnapshotRef;

@@ -5,8 +5,8 @@ import { Image, Pressable, Text, View } from 'react-native';
 
 import { CategoryChips } from '@/components/CategoryChips';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import type { VideoItem } from '@/packages/expo-video/types';
 import { VIDEO_CATEGORIES, VIDEOS, type VideoCategoryKey } from '@/data/videos';
+import type { VideoItem } from '@/packages/expo-video/types';
 
 function formatDuration(seconds?: number) {
   if (!seconds) return '';

@@ -1,8 +1,8 @@
 import '../global.css';
 import 'expo-dev-client';
-import { ThemeProvider as NavThemeProvider } from '@react-navigation/native';
 
 import { ActionSheetProvider } from '@expo/react-native-action-sheet';
+import { ThemeProvider as NavThemeProvider } from '@react-navigation/native';
 
 import { setAudioModeAsync } from 'expo-audio';
 import { Stack } from 'expo-router';
@@ -10,10 +10,9 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import { GoogleCast } from '@/packages/react-native-video/bridges';
-
 import { ThemeToggle } from '@/components/nativewindui/ThemeToggle';
 import { useColorScheme } from '@/lib/useColorScheme';
+import { GoogleCast } from '@/packages/react-native-video/features/cast/bridges/castBridge';
 import { NAV_THEME } from '@/theme';
 
 export {

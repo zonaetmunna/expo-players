@@ -3,15 +3,14 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { type LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-
-import { useDoubleTapSeek } from './hooks/useDoubleTapSeek';
-import { useLongPressSpeed } from './hooks/useLongPressSpeed';
-import { usePinchZoom } from './hooks/usePinchZoom';
-import type { RnvSnapshotRef } from './hooks/useRnvPlayerSnapshot';
-import { useSwipeBrightness } from './hooks/useSwipeBrightness';
-import { useSwipeSeek } from './hooks/useSwipeSeek';
-import { useSwipeVolume } from './hooks/useSwipeVolume';
-import type { ResizeMode } from './resizeMode';
+import type { ResizeMode } from '../../core/resizeMode';
+import type { RnvSnapshotRef } from '../../core/useRnvPlayerSnapshot';
+import { useDoubleTapSeek } from './useDoubleTapSeek';
+import { useLongPressSpeed } from './useLongPressSpeed';
+import { usePinchZoom } from './usePinchZoom';
+import { useSwipeBrightness } from './useSwipeBrightness';
+import { useSwipeSeek } from './useSwipeSeek';
+import { useSwipeVolume } from './useSwipeVolume';
 
 type Props = {
   snapshot: RnvSnapshotRef;

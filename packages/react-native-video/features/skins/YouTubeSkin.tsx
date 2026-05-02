@@ -1,15 +1,18 @@
+// YouTube-inspired skin — minimal chrome, red progress bar, smaller controls,
+// title-only top bar, time on left of scrubber, fullscreen on right.
+
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
-import { CastButton } from '../bridges';
+import { CastButton } from '../cast/bridges/castBridge';
 import { SettingsSheet } from './SettingsSheet';
 import { SkinScrubber } from './SkinScrubber';
 import type { SkinProps } from './types';
 import { useSkinControlsState } from './useSkinControlsState';
 
-const NETFLIX_RED = '#e50914';
+const YT_RED = '#ff0000';
 
 function formatTime(seconds: number) {
   const safe = Math.max(0, Number.isFinite(seconds) ? seconds : 0);
@@ -20,7 +23,7 @@ function formatTime(seconds: number) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-export function NetflixSkin(props: SkinProps) {
+export function YouTubeSkin(props: SkinProps) {
   const {
     state,
     title,
@@ -50,7 +53,8 @@ export function NetflixSkin(props: SkinProps) {
 
   const ctrl = useSkinControlsState(props);
 
-  // IMA owns the surface during ad breaks — hide our chrome to avoid double-UI.
+  // IMA SDK draws skip / countdown / click-through during ad breaks. Hide our
+  // chrome so it doesn't paint over the IMA UI.
   if (isInAdBreak) {
     return (
       <View pointerEvents="none" style={styles.adPillWrap}>
@@ -67,14 +71,14 @@ export function NetflixSkin(props: SkinProps) {
 
       {ctrl.showLoading ? (
         <View pointerEvents="none" style={styles.centerOverlay}>
-          <ActivityIndicator color={NETFLIX_RED} size="large" />
+          <ActivityIndicator color={YT_RED} size="large" />
         </View>
       ) : null}
 
       {hasError ? (
         <View style={styles.errorOverlay}>
-          <Ionicons name="warning" size={36} color={NETFLIX_RED} />
-          <Text style={styles.errorText}>{errorTitle ?? 'Playback failed'}</Text>
+          <Ionicons name="alert-circle" size={36} color={YT_RED} />
+          <Text style={styles.errorText}>{errorTitle ?? 'Playback error'}</Text>
           {errorHint ? (
             <Text style={styles.errorDetail} numberOfLines={4}>
               {errorHint}
@@ -82,8 +86,7 @@ export function NetflixSkin(props: SkinProps) {
           ) : null}
           {errorRetryable ? (
             <Pressable onPress={onRetry} style={styles.retryBtn}>
-              <Ionicons name="refresh" size={16} color="#fff" />
-              <Text style={styles.retryText}>Retry</Text>
+              <Text style={styles.retryText}>RETRY</Text>
             </Pressable>
           ) : null}
         </View>
@@ -91,61 +94,60 @@ export function NetflixSkin(props: SkinProps) {
 
       {ctrl.visible ? (
         <Animated.View
-          entering={FadeIn.duration(180)}
-          exiting={FadeOut.duration(220)}
+          entering={FadeIn.duration(120)}
+          exiting={FadeOut.duration(160)}
           style={styles.layer}
           pointerEvents="box-none">
-          {/* Top gradient + close button */}
+          {/* Top gradient — minimal: title + cast */}
           <LinearGradient
-            colors={['rgba(0,0,0,0.9)', 'transparent']}
+            colors={['rgba(0,0,0,0.7)', 'transparent']}
             style={styles.topGradient}
             pointerEvents="box-none">
             <View style={styles.topBar} pointerEvents="box-none">
               {onRequestBack ? (
-                <Pressable
-                  onPress={onRequestBack}
-                  hitSlop={8}
-                  style={styles.closeBtn}
-                  accessibilityRole="button"
-                  accessibilityLabel="Close">
-                  <Ionicons name="close" size={28} color="#fff" />
+                <Pressable onPress={onRequestBack} hitSlop={8} style={styles.iconBtn}>
+                  <Ionicons name="chevron-down" size={26} color="#fff" />
                 </Pressable>
-              ) : (
-                <View style={styles.closeBtn} />
-              )}
+              ) : null}
               <Text style={styles.title} numberOfLines={1}>
                 {title}
               </Text>
-              <View style={styles.topRight}>
-                {isLive ? (
-                  <View style={styles.liveBadge}>
-                    <View style={styles.liveDot} />
-                    <Text style={styles.liveText}>LIVE</Text>
-                  </View>
-                ) : null}
-                {onRequestPiP && Platform.OS !== 'web' ? (
-                  <Pressable onPress={onRequestPiP} hitSlop={8} style={styles.iconBtn}>
-                    <Ionicons name="albums-outline" size={22} color="#fff" />
-                  </Pressable>
-                ) : null}
-                {canCast ? (
-                  <View style={styles.iconBtn}>
-                    <CastButton style={styles.castButton} />
-                  </View>
-                ) : null}
-              </View>
+              {isLive ? (
+                <View style={styles.liveBadge}>
+                  <View style={styles.liveDot} />
+                  <Text style={styles.liveText}>LIVE</Text>
+                </View>
+              ) : null}
+              {canCast ? (
+                <View style={styles.iconBtn}>
+                  <CastButton style={styles.castButton} />
+                </View>
+              ) : null}
+              {onRequestPiP && Platform.OS !== 'web' ? (
+                <Pressable onPress={onRequestPiP} hitSlop={8} style={styles.iconBtn}>
+                  <Ionicons name="albums-outline" size={20} color="#fff" />
+                </Pressable>
+              ) : null}
+              <Pressable
+                onPress={() => {
+                  ctrl.setSettingsOpen(true);
+                  ctrl.autoHide.show();
+                }}
+                hitSlop={8}
+                style={styles.iconBtn}>
+                <Ionicons name="ellipsis-vertical" size={22} color="#fff" />
+              </Pressable>
             </View>
           </LinearGradient>
 
-          {/* Center: large play + side seek */}
+          {/* Center play + ±10 */}
           <View style={styles.centerRow} pointerEvents="box-none">
             <Pressable
               onPress={() => ctrl.seekRelative(-10)}
               hitSlop={12}
               disabled={isLive || !state.isLoaded}
               style={[styles.seekBtn, (isLive || !state.isLoaded) && styles.btnDisabled]}>
-              <Ionicons name="play-back" size={28} color="#fff" />
-              <Text style={styles.seekHint}>10</Text>
+              <Ionicons name="play-back" size={32} color="#fff" />
             </Pressable>
             <Pressable
               onPress={ctrl.togglePlay}
@@ -153,11 +155,11 @@ export function NetflixSkin(props: SkinProps) {
               style={styles.playBtn}
               disabled={!state.isLoaded}>
               {ctrl.seekPending != null || state.buffering ? (
-                <ActivityIndicator color="#fff" size="large" />
+                <ActivityIndicator color="#fff" size="small" />
               ) : (
                 <Ionicons
                   name={isEnded ? 'refresh' : state.isPlaying ? 'pause' : 'play'}
-                  size={48}
+                  size={42}
                   color="#fff"
                 />
               )}
@@ -167,17 +169,17 @@ export function NetflixSkin(props: SkinProps) {
               hitSlop={12}
               disabled={isLive || !state.isLoaded}
               style={[styles.seekBtn, (isLive || !state.isLoaded) && styles.btnDisabled]}>
-              <Ionicons name="play-forward" size={28} color="#fff" />
-              <Text style={styles.seekHint}>10</Text>
+              <Ionicons name="play-forward" size={32} color="#fff" />
             </Pressable>
           </View>
 
-          {/* Bottom gradient + scrubber + actions */}
+          {/* Bottom: time, scrubber, fullscreen */}
           <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.9)']}
+            colors={['transparent', 'rgba(0,0,0,0.85)']}
             style={styles.bottomGradient}
             pointerEvents="box-none">
-            <View style={styles.scrubRow} pointerEvents="box-none">
+            <View style={styles.bottomRow} pointerEvents="box-none">
+              <Text style={styles.timeText}>{isLive ? 'LIVE' : formatTime(ctrl.sliderValue)}</Text>
               <SkinScrubber
                 duration={ctrl.safeDuration}
                 value={ctrl.sliderValue}
@@ -185,34 +187,18 @@ export function NetflixSkin(props: SkinProps) {
                 scrubbing={ctrl.scrubbing}
                 spriteCue={ctrl.spriteCue}
                 disabled={isLive || !state.isLoaded}
-                minimumTrackTintColor={NETFLIX_RED}
-                maximumTrackTintColor="rgba(255,255,255,0.25)"
-                thumbTintColor={NETFLIX_RED}
+                minimumTrackTintColor={YT_RED}
+                maximumTrackTintColor="rgba(255,255,255,0.3)"
+                thumbTintColor={YT_RED}
                 onSlidingStart={ctrl.onScrubStart}
                 onValueChange={ctrl.onScrubChange}
                 onSlidingComplete={ctrl.onScrubComplete}
               />
-            </View>
-            <View style={styles.actionsRow} pointerEvents="box-none">
               <Text style={styles.timeText}>
-                {isLive
-                  ? 'LIVE'
-                  : `${formatTime(ctrl.sliderValue)} / ${formatTime(ctrl.safeDuration)}`}
+                {isLive ? '' : formatTime(Math.max(0, ctrl.safeDuration - ctrl.sliderValue))}
               </Text>
-              <View style={{ flex: 1 }} />
-              <Pressable
-                onPress={() => {
-                  ctrl.setSettingsOpen(true);
-                  ctrl.autoHide.show();
-                }}
-                hitSlop={8}
-                style={styles.actionBtn}>
-                <Ionicons name="settings-outline" size={20} color="#fff" />
-                <Text style={styles.actionText}>Settings</Text>
-              </Pressable>
-              <Pressable onPress={onToggleFullscreen} hitSlop={8} style={styles.actionBtn}>
+              <Pressable onPress={onToggleFullscreen} hitSlop={8} style={styles.iconBtn}>
                 <Ionicons name={isFullscreen ? 'contract' : 'expand'} size={20} color="#fff" />
-                <Text style={styles.actionText}>{isFullscreen ? 'Exit' : 'Fullscreen'}</Text>
               </Pressable>
             </View>
           </LinearGradient>
@@ -245,103 +231,71 @@ export function NetflixSkin(props: SkinProps) {
 const styles = StyleSheet.create({
   tapLayer: { ...StyleSheet.absoluteFillObject, zIndex: 1 },
   layer: { ...StyleSheet.absoluteFillObject, zIndex: 2, justifyContent: 'space-between' },
-  topGradient: {
-    paddingTop: 4,
-    paddingBottom: 32,
-  },
+  topGradient: { paddingBottom: 24 },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 12,
+    paddingHorizontal: 8,
+    paddingTop: 6,
+    paddingBottom: 4,
+    gap: 6,
   },
-  closeBtn: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: { flex: 1, color: '#fff', fontSize: 16, fontWeight: '700' },
-  topRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  title: { flex: 1, color: '#fff', fontSize: 14, fontWeight: '600' },
   iconBtn: {
     width: 36,
     height: 36,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  castButton: { width: 24, height: 24, tintColor: '#fff' },
+  castButton: { width: 22, height: 22, tintColor: '#fff' },
   liveBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: NETFLIX_RED,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-    marginRight: 8,
+    backgroundColor: YT_RED,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 2,
   },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
-  liveText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  liveText: { color: '#fff', fontSize: 10, fontWeight: '800' },
   btnDisabled: { opacity: 0.4 },
   centerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 40,
+    gap: 56,
   },
   seekBtn: {
-    width: 56,
-    height: 56,
+    width: 52,
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  seekHint: {
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: '700',
-    marginTop: -2,
-  },
   playBtn: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
+    width: 72,
+    height: 72,
     alignItems: 'center',
     justifyContent: 'center',
   },
   bottomGradient: {
-    paddingTop: 32,
-    paddingBottom: 6,
-    paddingHorizontal: 12,
+    paddingTop: 24,
+    paddingBottom: 4,
+    paddingHorizontal: 8,
   },
-  scrubRow: {
+  bottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  actionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    paddingTop: 4,
-  },
   timeText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
+    minWidth: 36,
+    textAlign: 'center',
     fontVariant: ['tabular-nums'],
   },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 4,
-    paddingVertical: 6,
-  },
-  actionText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   centerOverlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
@@ -356,40 +310,37 @@ const styles = StyleSheet.create({
     gap: 10,
     zIndex: 3,
   },
-  errorText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  errorText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   errorDetail: {
     color: 'rgba(255,255,255,0.85)',
     fontSize: 12,
     textAlign: 'center',
-    paddingHorizontal: 28,
-    lineHeight: 17,
+    paddingHorizontal: 24,
+    lineHeight: 16,
   },
   retryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingVertical: 9,
-    backgroundColor: NETFLIX_RED,
-    borderRadius: 4,
+    backgroundColor: YT_RED,
+    borderRadius: 2,
   },
-  retryText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  retryText: { color: '#fff', fontWeight: '800', fontSize: 13, letterSpacing: 1 },
   adPillWrap: {
     position: 'absolute',
-    top: 12,
-    left: 12,
+    top: 10,
+    left: 10,
     zIndex: 5,
   },
   adPill: {
-    backgroundColor: NETFLIX_RED,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
+    backgroundColor: '#facc15',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 2,
   },
   adPillText: {
-    color: '#fff',
+    color: '#000',
     fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
 });

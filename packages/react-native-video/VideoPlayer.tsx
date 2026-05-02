@@ -1,26 +1,26 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Platform, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import Video, { type ISO639_1, type TextTrackType, type VideoRef } from 'react-native-video';
-import { isAdsPlatformSupported, mapAds, validateAds } from './ads';
-import { CastIndicator } from './CastIndicator';
-import { CustomControls } from './CustomControls';
-import { isDrmSchemeSupported, mapDrm, validateDrm } from './drm';
-import { useAdLifecycle } from './hooks/useAdLifecycle';
-import { useCastSession } from './hooks/useCastSession';
-import { useFullscreen } from './hooks/useFullscreen';
-import { usePlayerError } from './hooks/usePlayerError';
-import { useRnvPlayerEvents } from './hooks/useRnvPlayerEvents';
-import { useRnvPlayerSnapshot } from './hooks/useRnvPlayerSnapshot';
-import { PlayerGestures } from './PlayerGestures';
-import type { ResizeMode } from './resizeMode';
-import type { SkinId } from './skins';
-import type { VideoItem } from './types';
 import {
   mapAudioTrackSelection,
   mapResizeMode,
   mapTextTrackSelection,
   mapVideoTrackSelection,
-} from './utils';
+} from './core/mappers';
+import type { ResizeMode } from './core/resizeMode';
+import { useFullscreen } from './core/useFullscreen';
+import { usePlayerError } from './core/usePlayerError';
+import { useRnvPlayerEvents } from './core/useRnvPlayerEvents';
+import { useRnvPlayerSnapshot } from './core/useRnvPlayerSnapshot';
+import { isAdsPlatformSupported, mapAds, validateAds } from './features/ads/ads';
+import { useAdLifecycle } from './features/ads/useAdLifecycle';
+import { CastIndicator } from './features/cast/CastIndicator';
+import { useCastSession } from './features/cast/useCastSession';
+import { isDrmSchemeSupported, mapDrm, validateDrm } from './features/drm/drm';
+import { PlayerGestures } from './features/gestures/PlayerGestures';
+import type { SkinId } from './features/skins';
+import { CustomControls } from './features/skins/CustomControls';
+import type { VideoItem } from './types/types';
 
 type Props = {
   source: VideoItem;
@@ -50,22 +50,20 @@ export function VideoPlayer({
   const videoRef = useRef<VideoRef>(null);
   const snapshot = useRnvPlayerSnapshot();
 
-  // === UI-only state ===
-  const [paused, setPaused] = useState(!autoPlay);
+  // No local `paused` state — runtime play/pause goes through videoRef
+  // (the prop races with the media-session service).
   const [rate, setRate] = useState(1);
   const [resizeMode, setResizeMode] = useState<ResizeMode>(initialResizeMode);
   const [skin, setSkin] = useState<SkinId>(initialSkin);
   const [isEnded, setIsEnded] = useState(false);
 
-  // === Composed feature hooks ===
   const fullscreen = useFullscreen();
   const errorMgr = usePlayerError({ drm: source.drm });
   const ads = useAdLifecycle();
 
-  // === Native event handlers + reactive state ===
   const handleEnd = useCallback(() => {
     if (!loop) {
-      setPaused(true);
+      videoRef.current?.pause();
       setIsEnded(true);
     }
   }, [loop]);
@@ -77,15 +75,12 @@ export function VideoPlayer({
     onEnd: handleEnd,
   });
 
-  // Mirror reactive state -> snapshot ref for gesture worklets (JS-thread safe).
+  // Mirror state into a ref so gesture worklets can read it on the JS thread.
   useEffect(() => {
     snapshot.current = events.state;
   }, [events.state, snapshot]);
 
-  // === Compatibility check: surface a banner instead of mounting <Video>
-  // with sources the platform fundamentally can't decode (rn-video would
-  // emit an opaque error otherwise). DRM + Ads checks live here too so we
-  // never hand a bad config to rn-video. ===
+  // Surface a banner instead of handing rn-video a config it can't play.
   const compatError = (() => {
     if (Platform.OS === 'ios' && source.type === 'dash') {
       return 'MPEG-DASH is not supported on iOS. Use HLS or progressive MP4 instead.';
@@ -122,15 +117,15 @@ export function VideoPlayer({
     return null;
   })();
 
-  // === Cast session — defined here so callbacks can reach local state ===
+  // Cast handoff: pause local on start, resume at receiver's position on end.
   const handleCastStart = useCallback(() => {
-    setPaused(true);
+    videoRef.current?.pause();
   }, []);
   const handleCastEnd = useCallback((lastPositionSec: number) => {
     if (Number.isFinite(lastPositionSec) && lastPositionSec > 0) {
       videoRef.current?.seek(lastPositionSec);
     }
-    setPaused(false);
+    videoRef.current?.resume();
   }, []);
   const cast = useCastSession({
     source,
@@ -138,21 +133,20 @@ export function VideoPlayer({
     onCastEnd: handleCastEnd,
   });
 
-  // Reset transient playback state when the source changes (different video selected)
+  // Reset transient state on source change. sourceId is read in the body so
+  // exhaustive-deps sees it as the real trigger.
+  const sourceId = source.id;
   useEffect(() => {
+    console.log('[rn-video] reset for source', sourceId);
     setIsEnded(false);
     errorMgr.clearError();
-    setPaused(!autoPlay);
     setRate(1);
     ads.reset();
-    // errorMgr.clearError + ads.reset are stable refs — included by lint rule but won't change
-  }, [source.id, autoPlay, errorMgr, ads]);
+  }, [sourceId, errorMgr, ads]);
 
-  // === Imperative actions — routed to cast session when casting, else local ===
+  // Imperative actions — routed to cast session when active, else local.
   const seekTo = (time: number) => {
-    // Live streams have no defined timeline — block seek to avoid sending invalid
-    // positions to the player or to the Cast receiver (which may interpret weirdly).
-    if (source.isLive) return;
+    if (source.isLive) return; // live has no scrubbable timeline
     setIsEnded(false);
     cast.remoteSeek(time).then((handled) => {
       if (!handled) videoRef.current?.seek(time);
@@ -164,24 +158,23 @@ export function VideoPlayer({
     setRate(r);
   };
 
+  // Imperative pause/resume — the `paused` prop loses races with the media session.
   const onPlay = () => {
     if (!cast.isCasting) {
-      setPaused(false);
+      videoRef.current?.resume();
       return;
     }
     cast.remotePlay().then((handled) => {
-      if (!handled) setPaused(false);
+      if (!handled) videoRef.current?.resume();
     });
   };
   const onPause = () => {
-    // eslint-disable-next-line no-console
-    console.log('[rnv] onPause called — isCasting:', cast.isCasting);
     if (!cast.isCasting) {
-      setPaused(true);
+      videoRef.current?.pause();
       return;
     }
     cast.remotePause().then((handled) => {
-      if (!handled) setPaused(true);
+      if (!handled) videoRef.current?.pause();
     });
   };
 
@@ -195,12 +188,11 @@ export function VideoPlayer({
 
   const onReplay = () => {
     videoRef.current?.seek(0);
+    videoRef.current?.resume();
     setIsEnded(false);
-    setPaused(false);
   };
 
-  // Memoize the source object so rn-video doesn't see a "new" prop every render
-  // (which causes it to reload + rebuffer the stream).
+  // Memoize so rn-video doesn't see a "new" source every render and rebuffer.
   const videoSource = useMemo(() => {
     const mappedAd = mapAds(source.ads);
     if (source.ads) {
@@ -212,7 +204,6 @@ export function VideoPlayer({
     }
     return {
       uri: source.uri,
-      // Let rn-video auto-detect from the URL extension (.m3u8 / .mpd / .mp4).
       headers: source.drm?.headers,
       drm: mapDrm(source.drm),
       ad: mappedAd,
@@ -254,7 +245,8 @@ export function VideoPlayer({
           ref={videoRef}
           source={videoSource}
           style={StyleSheet.absoluteFill}
-          paused={paused}
+          // Initial autoplay only — runtime play/pause uses the ref.
+          paused={!autoPlay}
           muted={muted}
           repeat={loop}
           rate={rate}
@@ -322,7 +314,7 @@ export function VideoPlayer({
   if (fullscreen.isFullscreen) {
     return (
       <>
-        {/* Inline placeholder keeps surrounding layout stable while fullscreen modal is open */}
+        {/* Placeholder keeps surrounding layout stable while the modal is open */}
         <View style={[styles.inlineContainer, style]} />
         <Modal
           visible
@@ -344,8 +336,7 @@ const styles = StyleSheet.create({
   inlineContainer: {
     width: '100%',
     backgroundColor: 'black',
-    // No fixed aspect ratio — the consumer screen decides the height via
-    // the `style` prop. Sensible default: 16:9 if the consumer didn't pass one.
+    // Consumer can override via `style.height`; default to 16:9.
     aspectRatio: 16 / 9,
   },
   fullscreenContainer: {

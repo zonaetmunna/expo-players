@@ -4,8 +4,8 @@
 import Slider from '@react-native-community/slider';
 import { useState } from 'react';
 import { type LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
-import type { SpriteCue } from '../hooks/useSpriteThumbnails';
-import { SpriteThumbnail } from '../SpriteThumbnail';
+import { SpriteThumbnail } from '../sprite-thumbnails/SpriteThumbnail';
+import type { SpriteCue } from '../sprite-thumbnails/useSpriteThumbnails';
 
 const SPRITE_BUBBLE_MIN = 96;
 const SPRITE_BUBBLE_MAX = 200;

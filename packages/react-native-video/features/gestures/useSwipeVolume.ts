@@ -4,7 +4,7 @@ import { Gesture } from 'react-native-gesture-handler';
 import { useSharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { VolumeManager } from '../bridges';
+import { VolumeManager } from './bridges/volumeBridge';
 
 type Options = {
   layoutWidth: number;

@@ -4,7 +4,7 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import { useColorScheme } from '@/lib/useColorScheme';
 
-import { CastButton } from '../bridges';
+import { CastButton } from '../cast/bridges/castBridge';
 import { SettingsSheet } from './SettingsSheet';
 import { SkinScrubber } from './SkinScrubber';
 import type { SkinProps } from './types';

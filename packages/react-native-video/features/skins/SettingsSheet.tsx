@@ -7,8 +7,8 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 
 import { useColorScheme } from '@/lib/useColorScheme';
 
-import type { ResizeMode } from '../resizeMode';
-import type { RnvSnapshot } from '../types';
+import type { ResizeMode } from '../../core/resizeMode';
+import type { RnvSnapshot } from '../../types/types';
 import { SKIN_OPTIONS, type SkinId } from './types';
 
 const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] as const;

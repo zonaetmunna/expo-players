@@ -8,11 +8,10 @@
 // Skin components consume this via one hook call and then render their own UI.
 
 import { useEffect, useRef, useState } from 'react';
-
-import { useControlsAutoHide } from '../hooks/useControlsAutoHide';
-import { useSpriteThumbnails } from '../hooks/useSpriteThumbnails';
-import type { SpriteThumbnails } from '../types';
+import type { SpriteThumbnails } from '../../types/types';
+import { useSpriteThumbnails } from '../sprite-thumbnails/useSpriteThumbnails';
 import type { SkinProps } from './types';
+import { useControlsAutoHide } from './useControlsAutoHide';
 
 type Args = Pick<
   SkinProps,
@@ -81,8 +80,6 @@ export function useSkinControlsState({
   }, [seekPending]);
 
   const togglePlay = () => {
-    // eslint-disable-next-line no-console
-    console.log('[skin] togglePlay tapped — isEnded:', isEnded, 'isPlaying:', state.isPlaying);
     autoHide.show();
     if (isEnded && onReplay) {
       onReplay();
@@ -126,8 +123,6 @@ export function useSkinControlsState({
   // Debounced single-tap so double-tap gestures don't flash the controls
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleTapLayerPress = () => {
-    // eslint-disable-next-line no-console
-    console.log('[skin] tapLayer pressed (background — toggles controls visibility)');
     if (tapTimerRef.current) {
       clearTimeout(tapTimerRef.current);
       tapTimerRef.current = null;

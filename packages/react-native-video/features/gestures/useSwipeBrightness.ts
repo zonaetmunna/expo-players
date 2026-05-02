@@ -4,7 +4,11 @@ import { Gesture } from 'react-native-gesture-handler';
 import { useSharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { getBrightnessAsync, requestPermissionsAsync, setBrightnessAsync } from '../bridges';
+import {
+  getBrightnessAsync,
+  requestPermissionsAsync,
+  setBrightnessAsync,
+} from './bridges/brightnessBridge';
 
 type Options = {
   layoutWidth: number;

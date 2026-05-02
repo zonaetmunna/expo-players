@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 
-import type { RnvSnapshot } from '../types';
+import type { RnvSnapshot } from '../types/types';
 
 export type RnvSnapshotRef = { current: RnvSnapshot };
 

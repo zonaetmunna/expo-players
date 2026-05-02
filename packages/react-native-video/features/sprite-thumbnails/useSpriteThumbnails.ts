@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import type { SpriteThumbnails } from '../types';
+import type { SpriteThumbnails } from '../../types/types';
 
 export type SpriteCue = {
   startSec: number;

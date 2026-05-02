@@ -1,9 +1,8 @@
 // Independent sample data for the react-native-video player.
 // Do NOT import from data/videos.ts (expo-video) — strict separation.
 
-import type { VideoItem } from '@/packages/react-native-video/types';
-
 import type { Chip } from '@/components/CategoryChips';
+import type { VideoItem } from '@/packages/react-native-video/types/types';
 
 export type VideoCategoryKey = VideoItem['category'] | 'all';
 

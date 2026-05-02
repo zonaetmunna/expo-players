@@ -1,8 +1,8 @@
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View, Image as RNImage } from 'react-native';
+import { ActivityIndicator, Image as RNImage, StyleSheet, View } from 'react-native';
 
-import type { SpriteCue } from './hooks/useSpriteThumbnails';
+import type { SpriteCue } from './useSpriteThumbnails';
 
 type Props = {
   cue: SpriteCue;

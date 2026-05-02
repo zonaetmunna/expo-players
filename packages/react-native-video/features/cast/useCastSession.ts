@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-
+import type { VideoItem } from '../../types/types';
 import {
   CastState,
   MediaStreamType,
@@ -7,9 +7,7 @@ import {
   useCastState,
   useRemoteMediaClient,
   useStreamPosition,
-} from '../bridges';
-
-import type { VideoItem } from '../types';
+} from '../cast/bridges/castBridge';
 
 function getCastContentType(type: VideoItem['type']) {
   if (type === 'hls') return 'application/x-mpegurl';

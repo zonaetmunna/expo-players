@@ -9,7 +9,7 @@
 import { useCallback, useState } from 'react';
 import type { OnLoadData, OnProgressData } from 'react-native-video';
 
-import type { RnvSnapshot } from '../types';
+import type { RnvSnapshot } from '../types/types';
 
 type Options = {
   /** Initial volume — passed in so consumer can persist it across mounts. */
@@ -108,8 +108,6 @@ export function useRnvPlayerEvents({
   }, []);
 
   const handlePlaybackStateChanged = useCallback(({ isPlaying }: { isPlaying: boolean }) => {
-    // eslint-disable-next-line no-console
-    console.log('[rn-video] onPlaybackStateChanged from native:', isPlaying);
     setState((s) => ({ ...s, isPlaying }));
   }, []);
 

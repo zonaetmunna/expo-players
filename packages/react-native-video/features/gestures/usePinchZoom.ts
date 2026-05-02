@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react';
 import { Gesture } from 'react-native-gesture-handler';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import type { ResizeMode } from '../resizeMode';
+import type { ResizeMode } from '../../core/resizeMode';
 
 type Options = {
   resizeMode: ResizeMode;

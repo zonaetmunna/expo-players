@@ -1,9 +1,8 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ScrollView, Text, View } from 'react-native';
-
-import { VideoPlayer } from '@/packages/react-native-video';
-import type { VideoItem } from '@/packages/react-native-video/types';
 import { VIDEOS } from '@/data/videos-rnv';
+import { VideoPlayer } from '@/packages/react-native-video';
+import type { VideoItem } from '@/packages/react-native-video/types/types';
 
 export default function RnvVideoDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

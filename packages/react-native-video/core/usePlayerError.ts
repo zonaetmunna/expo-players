@@ -6,9 +6,9 @@
 import { useCallback, useState } from 'react';
 import type { OnVideoErrorData } from 'react-native-video';
 
-import { describeDrmError } from '../drm';
-import { describeError, type FriendlyError } from '../errors';
-import type { VideoDRM } from '../types';
+import { describeDrmError } from '../features/drm/drm';
+import type { VideoDRM } from '../types/types';
+import { describeError, type FriendlyError } from './errors';
 
 type Options = {
   /**

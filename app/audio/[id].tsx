@@ -1,8 +1,7 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Image, ScrollView, Text, View } from 'react-native';
-
-import { AudioPlayer } from '@/packages/audio';
 import { AUDIOS } from '@/data/audios';
+import { AudioPlayer } from '@/packages/audio';
 
 export default function AudioDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

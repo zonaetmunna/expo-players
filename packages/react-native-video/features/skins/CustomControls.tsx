@@ -1,4 +1,4 @@
-import { DefaultSkin, NetflixSkin, type SkinProps, YouTubeSkin } from './skins';
+import { DefaultSkin, NetflixSkin, type SkinProps, YouTubeSkin } from '.';
 
 export function CustomControls(props: SkinProps) {
   switch (props.skin) {

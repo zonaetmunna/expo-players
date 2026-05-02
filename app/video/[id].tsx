@@ -1,8 +1,5 @@
 import { Link, Stack, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-
-import { VideoPlayer } from '@/packages/expo-video';
-import type { VideoItem } from '@/packages/expo-video/types';
 import {
   DeviceCompatibility,
   KnownIssues,
@@ -11,6 +8,8 @@ import {
   VideoHeaderInfo,
 } from '@/components/video-details';
 import { VIDEOS } from '@/data/videos';
+import { VideoPlayer } from '@/packages/expo-video';
+import type { VideoItem } from '@/packages/expo-video/types';
 
 export default function VideoDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
