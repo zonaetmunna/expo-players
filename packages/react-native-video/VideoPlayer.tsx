@@ -4,6 +4,14 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Video, { type ISO639_1, type TextTrackType, type VideoRef } from 'react-native-video';
 import {
+  cancelDownload,
+  type DownloadState,
+  deleteDownload,
+  downloadVideo,
+  isDownloadable,
+  useDownloadStatus,
+} from './core/downloads';
+import {
   mapAudioTrackSelection,
   mapResizeMode,
   mapTextTrackSelection,
@@ -34,6 +42,8 @@ type Props = {
   initialResizeMode?: ResizeMode;
   initialSkin?: SkinId;
   gesturesEnabled?: boolean;
+  /** When true, show a download button in the top bar for downloadable sources. */
+  downloadEnabled?: boolean;
   onRequestBack?: () => void;
   style?: ViewStyle;
 };
@@ -47,6 +57,7 @@ export function VideoPlayer({
   initialResizeMode = 'contain',
   initialSkin = 'default',
   gesturesEnabled = true,
+  downloadEnabled = true,
   onRequestBack,
   style,
 }: Props) {
@@ -56,6 +67,9 @@ export function VideoPlayer({
   // top icons (cast / settings / PiP / close) clear the status bar and the
   // landscape camera notch on Android.
   const insets = useSafeAreaInsets();
+  // If this video has been downloaded, prefer the local file URI so it plays
+  // offline. Falls through to the remote URI when not downloaded.
+  const downloadStatus = useDownloadStatus(source.id);
 
   // No local `paused` state — runtime play/pause goes through videoRef
   // (the prop races with the media-session service).
@@ -307,6 +321,26 @@ export function VideoPlayer({
     setIsEnded(false);
   }, []);
 
+  // Download button handler — switches behavior based on current state.
+  // The button only appears in the skin when downloadEnabled && isDownloadable
+  // (gated below in the prop pass-through), so handlers don't need to recheck.
+  const onToggleDownload = useCallback(() => {
+    const state: DownloadState = downloadStatus.state;
+    if (state === 'idle' || state === 'error' || state === 'cancelled') {
+      downloadVideo({
+        id: source.id,
+        uri: source.uri,
+        title: source.title,
+        poster: source.poster,
+        durationSec: source.duration,
+      });
+    } else if (state === 'downloading') {
+      cancelDownload(source.id);
+    } else if (state === 'done') {
+      deleteDownload(source.id);
+    }
+  }, [downloadStatus.state, source.id, source.uri, source.title, source.poster, source.duration]);
+
   const handleToggleFullscreen = useCallback(async () => {
     if (!isLiveForResume) {
       const t = snapshot.current.currentTime;
@@ -329,8 +363,14 @@ export function VideoPlayer({
         mappedAd,
       });
     }
+    // Prefer the locally-downloaded file when available so the video plays
+    // offline. Falls through to the remote URL otherwise.
+    const effectiveUri =
+      downloadStatus.state === 'done' && downloadStatus.localUri
+        ? downloadStatus.localUri
+        : source.uri;
     return {
-      uri: source.uri,
+      uri: effectiveUri,
       headers: source.drm?.headers,
       drm: mapDrm(source.drm),
       ad: mappedAd,
@@ -359,6 +399,8 @@ export function VideoPlayer({
     source.title,
     source.description,
     source.poster,
+    downloadStatus.state,
+    downloadStatus.localUri,
   ]);
 
   // Memoize enum mapper outputs so they don't allocate fresh objects every
@@ -457,6 +499,10 @@ export function VideoPlayer({
           isFullscreen={fullscreen.isFullscreen}
           canCast={cast.canCast}
           isCasting={cast.isCasting}
+          canDownload={downloadEnabled && isDownloadable(source)}
+          downloadState={downloadStatus.state}
+          downloadProgress={downloadStatus.progress}
+          onToggleDownload={onToggleDownload}
           spriteThumbnails={source.spriteThumbnails}
           skin={skin}
           onSelectSkin={setSkin}

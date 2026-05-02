@@ -2,6 +2,7 @@
 // and renders the controls layer. The router (CustomControls.tsx) picks one
 // skin at a time based on the `skin` prop on VideoPlayer.
 
+import type { DownloadState } from '../../core/downloads';
 import type { ResizeMode } from '../../core/resizeMode';
 import type { RnvSnapshotRef } from '../../core/useRnvPlayerSnapshot';
 import type { RnvSnapshot, SpriteThumbnails } from '../../types/types';
@@ -53,6 +54,14 @@ export type SkinProps = {
   isFullscreen: boolean;
   canCast?: boolean;
   isCasting?: boolean;
+  /** When true, render a download button in the top bar. */
+  canDownload?: boolean;
+  /** Current download state for this video — drives the icon variant. */
+  downloadState?: DownloadState;
+  /** 0..1 progress when downloadState === 'downloading'. */
+  downloadProgress?: number;
+  /** Tap handler — toggles between start / cancel / delete based on state. */
+  onToggleDownload?: () => void;
   spriteThumbnails?: SpriteThumbnails;
   /** Currently active skin — shown as selected in the picker */
   skin: SkinId;

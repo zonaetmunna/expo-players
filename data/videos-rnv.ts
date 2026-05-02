@@ -4,10 +4,11 @@
 import type { Chip } from '@/components/CategoryChips';
 import type { VideoItem } from '@/packages/react-native-video/types/types';
 
-export type VideoCategoryKey = VideoItem['category'] | 'all';
+export type VideoCategoryKey = VideoItem['category'] | 'all' | 'downloads';
 
 export const VIDEO_CATEGORIES: readonly Chip<VideoCategoryKey>[] = [
   { key: 'all', label: 'All', icon: 'apps-outline' },
+  { key: 'downloads', label: 'Downloads', icon: 'cloud-done-outline' },
   { key: 'progressive', label: 'Progressive', icon: 'download-outline' },
   { key: 'streaming', label: 'HLS / DASH', icon: 'cloud-outline' },
   { key: 'live', label: 'Live', icon: 'radio-outline' },

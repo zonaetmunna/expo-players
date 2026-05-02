@@ -35,6 +35,10 @@ export function DefaultSkin(props: SkinProps) {
     resizeMode,
     isFullscreen,
     canCast = false,
+    canDownload = false,
+    downloadState = 'idle',
+    downloadProgress,
+    onToggleDownload,
     skin,
     onSetRate,
     onSelectVideoTrack,
@@ -132,6 +136,34 @@ export function DefaultSkin(props: SkinProps) {
                 <View style={styles.iconBtn}>
                   <CastButton style={styles.castButton} />
                 </View>
+              ) : null}
+              {canDownload ? (
+                <Pressable
+                  onPress={onToggleDownload}
+                  hitSlop={8}
+                  style={styles.iconBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    downloadState === 'done'
+                      ? 'Delete downloaded video'
+                      : downloadState === 'downloading'
+                        ? 'Cancel download'
+                        : 'Download for offline'
+                  }>
+                  <Ionicons
+                    name={
+                      downloadState === 'done'
+                        ? 'checkmark-circle'
+                        : downloadState === 'downloading'
+                          ? 'close-circle-outline'
+                          : downloadState === 'error'
+                            ? 'alert-circle-outline'
+                            : 'cloud-download-outline'
+                    }
+                    size={20}
+                    color={downloadState === 'done' ? accentColor : '#fff'}
+                  />
+                </Pressable>
               ) : null}
               <Pressable
                 onPress={() => {

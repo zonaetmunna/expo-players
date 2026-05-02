@@ -39,6 +39,9 @@ export function YouTubeSkin(props: SkinProps) {
     resizeMode,
     isFullscreen,
     canCast = false,
+    canDownload = false,
+    downloadState = 'idle',
+    onToggleDownload,
     skin,
     onSetRate,
     onSelectVideoTrack,
@@ -128,6 +131,34 @@ export function YouTubeSkin(props: SkinProps) {
               {onRequestPiP && Platform.OS !== 'web' ? (
                 <Pressable onPress={onRequestPiP} hitSlop={8} style={styles.iconBtn}>
                   <Ionicons name="albums-outline" size={20} color="#fff" />
+                </Pressable>
+              ) : null}
+              {canDownload ? (
+                <Pressable
+                  onPress={onToggleDownload}
+                  hitSlop={8}
+                  style={styles.iconBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    downloadState === 'done'
+                      ? 'Delete downloaded video'
+                      : downloadState === 'downloading'
+                        ? 'Cancel download'
+                        : 'Download for offline'
+                  }>
+                  <Ionicons
+                    name={
+                      downloadState === 'done'
+                        ? 'checkmark-circle'
+                        : downloadState === 'downloading'
+                          ? 'close-circle-outline'
+                          : downloadState === 'error'
+                            ? 'alert-circle-outline'
+                            : 'cloud-download-outline'
+                    }
+                    size={20}
+                    color={downloadState === 'done' ? YT_RED : '#fff'}
+                  />
                 </Pressable>
               ) : null}
               <Pressable

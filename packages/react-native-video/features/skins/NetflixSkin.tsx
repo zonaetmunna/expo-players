@@ -36,6 +36,9 @@ export function NetflixSkin(props: SkinProps) {
     resizeMode,
     isFullscreen,
     canCast = false,
+    canDownload = false,
+    downloadState = 'idle',
+    onToggleDownload,
     skin,
     onSetRate,
     onSelectVideoTrack,
@@ -134,6 +137,34 @@ export function NetflixSkin(props: SkinProps) {
                   <View style={styles.iconBtn}>
                     <CastButton style={styles.castButton} />
                   </View>
+                ) : null}
+                {canDownload ? (
+                  <Pressable
+                    onPress={onToggleDownload}
+                    hitSlop={8}
+                    style={styles.iconBtn}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      downloadState === 'done'
+                        ? 'Delete downloaded video'
+                        : downloadState === 'downloading'
+                          ? 'Cancel download'
+                          : 'Download for offline'
+                    }>
+                    <Ionicons
+                      name={
+                        downloadState === 'done'
+                          ? 'checkmark-circle'
+                          : downloadState === 'downloading'
+                            ? 'close-circle-outline'
+                            : downloadState === 'error'
+                              ? 'alert-circle-outline'
+                              : 'cloud-download-outline'
+                      }
+                      size={22}
+                      color={downloadState === 'done' ? NETFLIX_RED : '#fff'}
+                    />
+                  </Pressable>
                 ) : null}
               </View>
             </View>
