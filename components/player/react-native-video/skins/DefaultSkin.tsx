@@ -1,5 +1,3 @@
-// Default skin — same look as the original CustomControls.
-
 import { Ionicons } from '@expo/vector-icons';
 import {
   ActivityIndicator,
@@ -57,16 +55,10 @@ export function DefaultSkin(props: SkinProps) {
   } = props;
 
   const ctrl = useSkinControlsState(props);
-  // Default skin tracks the app's current theme so the scrubber + active-state
-  // colors flip between light/dark mode. Netflix/YouTube keep their own brand
-  // colors regardless of theme — that matches how those products behave IRL.
   const { colors } = useColorScheme();
   const accentColor = colors.primary;
   const retryColor = colors.primary;
 
-  // IMA renders its own skip / countdown / click-through chrome during ad
-  // breaks. Hide our skin entirely so we don't double up — only show a small
-  // "Ad" pill at the top so the user knows what's playing.
   if (isInAdBreak) {
     return (
       <View pointerEvents="none" style={styles.adPillWrap}>

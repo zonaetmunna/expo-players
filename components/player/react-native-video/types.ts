@@ -1,3 +1,4 @@
+
 // Independent types for the react-native-video player.
 // Do NOT import from components/player/expo-video — strict separation.
 
@@ -182,10 +183,10 @@ export type RnvSnapshot = {
   buffering: boolean;
   isLoaded: boolean;
   isPlaying: boolean;
-  videoTracks: Array<{ index: number; width?: number; height?: number; bitrate?: number }>;
+  videoTracks: { index: number; width?: number; height?: number; bitrate?: number }[];
   selectedVideoTrack: number | 'auto';
-  audioTracks: Array<{ index: number; title?: string; language?: string }>;
+  audioTracks: { index: number; title?: string; language?: string }[];
   selectedAudioTrack: number | null;
-  textTracks: Array<{ index: number; title?: string; language?: string }>;
+  textTracks: { index: number; title?: string; language?: string }[];
   selectedTextTrack: number | null;
 };

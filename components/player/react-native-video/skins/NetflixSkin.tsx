@@ -1,5 +1,4 @@
-// Netflix-inspired skin — dark with red accent, prominent close (X) button top-left,
-// large center play button, gradient overlays at top + bottom, red scrubber.
+
 
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';

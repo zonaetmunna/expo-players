@@ -1,39 +1,31 @@
-import * as ScreenOrientation from 'expo-screen-orientation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, Platform, StatusBar, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { Modal, Platform, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import Video, {
-  ResizeMode as RnvResizeMode,
-  SelectedTrackType,
-  SelectedVideoTrackType,
   TextTrackType,
   type ISO639_1,
-  type OnLoadData,
-  type OnProgressData,
-  type OnReceiveAdEventData,
-  type OnVideoErrorData,
-  type SelectedTrack,
-  type SelectedVideoTrack,
   type VideoRef,
 } from 'react-native-video';
 
 import { CastIndicator } from './CastIndicator';
 import { CustomControls } from './CustomControls';
 import { PlayerGestures } from './PlayerGestures';
-import {
-  INITIAL_AD_STATE,
-  isAdsPlatformSupported,
-  mapAds,
-  reduceAdEvent,
-  validateAds,
-  type AdPlayerState,
-} from './ads';
-import { describeDrmError, isDrmSchemeSupported, mapDrm, validateDrm } from './drm';
-import { describeError, type FriendlyError } from './errors';
+import { isAdsPlatformSupported, mapAds, validateAds } from './ads';
+import { isDrmSchemeSupported, mapDrm, validateDrm } from './drm';
+import { useAdLifecycle } from './hooks/useAdLifecycle';
 import { useCastSession } from './hooks/useCastSession';
+import { useFullscreen } from './hooks/useFullscreen';
+import { usePlayerError } from './hooks/usePlayerError';
+import { useRnvPlayerEvents } from './hooks/useRnvPlayerEvents';
 import { useRnvPlayerSnapshot } from './hooks/useRnvPlayerSnapshot';
 import type { ResizeMode } from './resizeMode';
+import {
+  mapAudioTrackSelection,
+  mapResizeMode,
+  mapTextTrackSelection,
+  mapVideoTrackSelection,
+} from './utils';
 import type { SkinId } from './skins';
-import type { RnvSnapshot, VideoItem } from './types';
+import type { VideoItem } from './types';
 
 type Props = {
   source: VideoItem;
@@ -48,36 +40,6 @@ type Props = {
   style?: ViewStyle;
 };
 
-/** Map our string-literal ResizeMode to rn-video v6's ResizeMode enum.
- * rn-video v6 expects the enum values for live updates to take effect on iOS. */
-function mapResizeMode(mode: ResizeMode): RnvResizeMode {
-  switch (mode) {
-    case 'cover':
-      return RnvResizeMode.COVER;
-    case 'stretch':
-      return RnvResizeMode.STRETCH;
-    case 'none':
-      return RnvResizeMode.NONE;
-    case 'contain':
-    default:
-      return RnvResizeMode.CONTAIN;
-  }
-}
-
-function mapVideoTrackSelection(sel: number | 'auto'): SelectedVideoTrack {
-  if (sel === 'auto') return { type: SelectedVideoTrackType.AUTO };
-  return { type: SelectedVideoTrackType.INDEX, value: sel };
-}
-
-function mapAudioTrackSelection(sel: number | null): SelectedTrack | undefined {
-  if (sel === null) return undefined;
-  return { type: SelectedTrackType.INDEX, value: sel };
-}
-
-function mapTextTrackSelection(sel: number | null): SelectedTrack {
-  if (sel === null) return { type: SelectedTrackType.DISABLED };
-  return { type: SelectedTrackType.INDEX, value: sel };
-}
 
 export function VideoPlayer({
   source,
@@ -94,26 +56,42 @@ export function VideoPlayer({
   const videoRef = useRef<VideoRef>(null);
   const snapshot = useRnvPlayerSnapshot();
 
-  // Reactive state mirrored from rn-video events
-  const [state, setState] = useState<RnvSnapshot>({
-    currentTime: 0,
-    duration: source.duration ?? 0,
-    volume: initialVolume,
-    buffering: false,
-    isLoaded: false,
-    isPlaying: autoPlay,
-    videoTracks: [],
-    selectedVideoTrack: 'auto',
-    audioTracks: [],
-    selectedAudioTrack: null,
-    textTracks: [],
-    selectedTextTrack: null,
+  // === UI-only state ===
+  const [paused, setPaused] = useState(!autoPlay);
+  const [rate, setRate] = useState(1);
+  const [resizeMode, setResizeMode] = useState<ResizeMode>(initialResizeMode);
+  const [skin, setSkin] = useState<SkinId>(initialSkin);
+  const [isEnded, setIsEnded] = useState(false);
+
+  // === Composed feature hooks ===
+  const fullscreen = useFullscreen();
+  const errorMgr = usePlayerError({ drm: source.drm });
+  const ads = useAdLifecycle();
+
+  // === Native event handlers + reactive state ===
+  const handleEnd = useCallback(() => {
+    if (!loop) {
+      setPaused(true);
+      setIsEnded(true);
+    }
+  }, [loop]);
+
+  const events = useRnvPlayerEvents({
+    initialVolume,
+    autoPlay,
+    initialDuration: source.duration ?? 0,
+    onEnd: handleEnd,
   });
 
-  // Compatibility check: surface a banner instead of mounting <Video> with sources
-  // that the platform fundamentally can't decode (rn-video would emit an opaque
-  // error otherwise). DRM checks live here too so we never hand a bad config to
-  // rn-video — it would emit a vague native error several seconds later.
+  // Mirror reactive state -> snapshot ref for gesture worklets (JS-thread safe).
+  useEffect(() => {
+    snapshot.current = events.state;
+  }, [events.state, snapshot]);
+
+  // === Compatibility check: surface a banner instead of mounting <Video>
+  // with sources the platform fundamentally can't decode (rn-video would
+  // emit an opaque error otherwise). DRM + Ads checks live here too so we
+  // never hand a bad config to rn-video. ===
   const compatError = (() => {
     if (Platform.OS === 'ios' && source.type === 'dash') {
       return 'MPEG-DASH is not supported on iOS. Use HLS or progressive MP4 instead.';
@@ -150,33 +128,11 @@ export function VideoPlayer({
     return null;
   })();
 
-  const [paused, setPaused] = useState(!autoPlay);
-  const [rate, setRate] = useState(1);
-  const [resizeMode, setResizeMode] = useState<ResizeMode>(initialResizeMode);
-  const [skin, setSkin] = useState<SkinId>(initialSkin);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [error, setError] = useState<FriendlyError | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
-  const [isEnded, setIsEnded] = useState(false);
-  // IMA ad state — driven by onReceiveAdEvent. The IMA SDK renders the actual
-  // ad UI (skip button, countdown, click-through) natively over the Video
-  // surface; we use this to hide our own controls during an ad break and to
-  // surface ad errors without breaking content playback.
-  const [adState, setAdState] = useState<AdPlayerState>(INITIAL_AD_STATE);
-
-  // Mirror reactive state -> snapshot ref for gesture hooks (worklets read this safely on JS thread)
-  useEffect(() => {
-    snapshot.current = state;
-  }, [state, snapshot]);
-
-  // === Cast session — managed in its own hook ===
-  // Defined here so `onCastStart`/`onCastEnd` can reach the local player state.
+  // === Cast session — defined here so callbacks can reach local state ===
   const handleCastStart = useCallback(() => {
-    // Pause local playback when handoff begins
     setPaused(true);
   }, []);
   const handleCastEnd = useCallback((lastPositionSec: number) => {
-    // Resume locally at the position the receiver was at
     if (Number.isFinite(lastPositionSec) && lastPositionSec > 0) {
       videoRef.current?.seek(lastPositionSec);
     }
@@ -191,46 +147,18 @@ export function VideoPlayer({
   // Reset transient playback state when the source changes (different video selected)
   useEffect(() => {
     setIsEnded(false);
-    setError(null);
+    errorMgr.clearError();
     setPaused(!autoPlay);
     setRate(1);
-    setAdState(INITIAL_AD_STATE);
-  }, [source.id, autoPlay]);
-
-  // Reset orientation + restore status bar on unmount
-  useEffect(() => {
-    return () => {
-      ScreenOrientation.unlockAsync().catch(() => {});
-      StatusBar.setHidden(false, 'fade');
-      if (Platform.OS === 'android') {
-        StatusBar.setTranslucent(false);
-      }
-    };
-  }, []);
-
-  // Imperatively control the status bar based on fullscreen state.
-  // expo-status-bar / <StatusBar /> inside Modal is unreliable on Android — this runs
-  // on the root view regardless of where this component is mounted.
-  useEffect(() => {
-    if (isFullscreen) {
-      StatusBar.setHidden(true, 'fade');
-      if (Platform.OS === 'android') {
-        StatusBar.setTranslucent(true);
-      }
-    } else {
-      StatusBar.setHidden(false, 'fade');
-      if (Platform.OS === 'android') {
-        StatusBar.setTranslucent(false);
-      }
-    }
-  }, [isFullscreen]);
+    ads.reset();
+    // errorMgr.clearError + ads.reset are stable refs — included by lint rule but won't change
+  }, [source.id, autoPlay, errorMgr, ads]);
 
   // === Imperative actions — routed to cast session when casting, else local ===
   const seekTo = (time: number) => {
     // Live streams have no defined timeline — block seek to avoid sending invalid
     // positions to the player or to the Cast receiver (which may interpret weirdly).
     if (source.isLive) return;
-    // Any seek that goes back from the end should clear the "ended" flag
     setIsEnded(false);
     cast.remoteSeek(time).then((handled) => {
       if (!handled) videoRef.current?.seek(time);
@@ -243,7 +171,6 @@ export function VideoPlayer({
   };
 
   const onPlay = () => {
-    // Short-circuit when not casting — avoids 50–200ms await before local play resumes.
     if (!cast.isCasting) {
       setPaused(false);
       return;
@@ -262,92 +189,11 @@ export function VideoPlayer({
     });
   };
 
-  const onSelectVideoTrack = (index: number | 'auto') => {
-    setState((s) => ({ ...s, selectedVideoTrack: index }));
-  };
-  const onSelectAudioTrack = (index: number | null) => {
-    setState((s) => ({ ...s, selectedAudioTrack: index }));
-  };
-
-  const onSelectTextTrack = (index: number | null) => {
-    setState((s) => ({ ...s, selectedTextTrack: index }));
-  };
-
-  const onToggleFullscreen = async () => {
-    try {
-      if (isFullscreen) {
-        await ScreenOrientation.unlockAsync();
-        setIsFullscreen(false);
-      } else {
-        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
-        setIsFullscreen(true);
-      }
-    } catch {
-      // ignore — orientation lock denied
-    }
-  };
-
   const onRequestPiP = () => {
     try {
       videoRef.current?.enterPictureInPicture();
     } catch {
       // ignore
-    }
-  };
-
-  const onRetry = () => {
-    setError(null);
-    setReloadKey((k) => k + 1);
-  };
-
-  // === rn-video event handlers ===
-  const handleLoadStart = () => {
-    // eslint-disable-next-line no-console
-    console.log('[rn-video] onLoadStart for', source.uri);
-  };
-
-  const handleLoad = (data: OnLoadData) => {
-    // eslint-disable-next-line no-console
-    console.log('[rn-video] onLoad', { duration: data.duration, tracks: data.videoTracks?.length });
-    setState((s) => ({
-      ...s,
-      duration: data.duration,
-      isLoaded: true,
-      videoTracks: data.videoTracks.map((t) => ({
-        index: t.index,
-        width: t.width,
-        height: t.height,
-        bitrate: t.bitrate,
-      })),
-      audioTracks: data.audioTracks.map((t) => ({
-        index: t.index,
-        title: t.title,
-        language: t.language,
-      })),
-      textTracks: data.textTracks.map((t) => ({
-        index: t.index,
-        title: t.title,
-        language: t.language,
-      })),
-    }));
-  };
-
-  const handleProgress = (data: OnProgressData) => {
-    setState((s) => ({ ...s, currentTime: data.currentTime }));
-  };
-
-  const handleBuffer = ({ isBuffering }: { isBuffering: boolean }) => {
-    setState((s) => ({ ...s, buffering: isBuffering }));
-  };
-
-  const handlePlaybackStateChanged = ({ isPlaying }: { isPlaying: boolean }) => {
-    setState((s) => ({ ...s, isPlaying }));
-  };
-
-  const handleEnd = () => {
-    if (!loop) {
-      setPaused(true);
-      setIsEnded(true);
     }
   };
 
@@ -357,60 +203,11 @@ export function VideoPlayer({
     setPaused(false);
   };
 
-  const handleError = (e: OnVideoErrorData) => {
-    // Always log the raw payload at warn level so diagnostics survive even when
-    // the user sees a friendly summary. Native error objects on iOS sometimes
-    // contain circular references → guard JSON.stringify.
-    let serialized: string;
-    try {
-      serialized = JSON.stringify(e, null, 2);
-    } catch {
-      serialized = String(e);
-    }
-    // eslint-disable-next-line no-console
-    console.warn('[rn-video] onError raw:', serialized);
-
-    // 1. DRM-specific errors take priority — they have a much more actionable
-    //    message than anything the generic classifier could produce.
-    if (source.drm) {
-      const drmMsg = describeDrmError(e);
-      if (drmMsg) {
-        setError({
-          title: 'Cannot play this video',
-          hint: drmMsg,
-          retryable: false,
-          category: 'unknown',
-        });
-        return;
-      }
-    }
-
-    // 2. Generic classifier handles everything else: HTTP status codes,
-    //    network/timeout, codec/format problems, manifest parse errors, etc.
-    setError(describeError(e));
-  };
-
-  const handleVolumeChange = ({ volume }: { volume: number }) => {
-    setState((s) => ({ ...s, volume }));
-  };
-
-  // IMA ad-event router. The IMA SDK takes over the surface during ad breaks
-  // (CONTENT_PAUSE_REQUESTED → CONTENT_RESUME_REQUESTED) and renders its own
-  // skip / countdown / click-through chrome. We just track the state so our
-  // custom controls hide themselves while ads play.
-  const handleAdEvent = (e: OnReceiveAdEventData) => {
-    const eventName = e?.event ?? 'UNKNOWN';
-    // eslint-disable-next-line no-console
-    console.log('[rn-video] onReceiveAdEvent', eventName, e?.data);
-    setAdState((prev) => reduceAdEvent(prev, eventName, e?.data));
-  };
-
   // Memoize the source object so rn-video doesn't see a "new" prop every render
   // (which causes it to reload + rebuffer the stream).
   const videoSource = useMemo(() => {
     const mappedAd = mapAds(source.ads);
     if (source.ads) {
-      // eslint-disable-next-line no-console
       console.log('[rn-video] ads config attached to source', {
         title: source.title,
         rawAds: source.ads,
@@ -445,22 +242,21 @@ export function VideoPlayer({
   const playerBody = (
     <View
       style={
-        isFullscreen
+        fullscreen.isFullscreen
           ? styles.fullscreenContainer
           : [styles.inlineContainer, style]
       }>
-
       <PlayerGestures
         snapshot={snapshot}
         isLive={!!source.isLive}
-        isPlayingState={state.isPlaying && !isEnded}
+        isPlayingState={events.state.isPlaying && !isEnded}
         resizeMode={resizeMode}
         onResizeModeChange={setResizeMode}
         seekTo={seekTo}
         setRate={setRateImperative}
         enabled={gesturesEnabled}>
         <Video
-          key={reloadKey}
+          key={errorMgr.reloadKey}
           ref={videoRef}
           source={videoSource}
           style={StyleSheet.absoluteFill}
@@ -468,24 +264,18 @@ export function VideoPlayer({
           muted={muted}
           repeat={loop}
           rate={rate}
-          volume={state.volume}
+          volume={events.state.volume}
           resizeMode={mapResizeMode(resizeMode)}
-          selectedVideoTrack={mapVideoTrackSelection(state.selectedVideoTrack)}
-          selectedAudioTrack={mapAudioTrackSelection(state.selectedAudioTrack)}
-          selectedTextTrack={mapTextTrackSelection(state.selectedTextTrack)}
+          selectedVideoTrack={mapVideoTrackSelection(events.state.selectedVideoTrack)}
+          selectedAudioTrack={mapAudioTrackSelection(events.state.selectedAudioTrack)}
+          selectedTextTrack={mapTextTrackSelection(events.state.selectedTextTrack)}
           playInBackground
           showNotificationControls
           enterPictureInPictureOnLeave
           progressUpdateInterval={250}
-          onLoadStart={handleLoadStart}
-          onLoad={handleLoad}
-          onProgress={handleProgress}
-          onBuffer={handleBuffer}
-          onPlaybackStateChanged={handlePlaybackStateChanged}
-          onVolumeChange={handleVolumeChange}
-          onEnd={handleEnd}
-          onError={handleError}
-          onReceiveAdEvent={source.ads ? handleAdEvent : undefined}
+          {...events.videoEventProps}
+          onError={errorMgr.handleError}
+          onReceiveAdEvent={source.ads ? ads.handleAdEvent : undefined}
         />
       </PlayerGestures>
 
@@ -504,18 +294,18 @@ export function VideoPlayer({
 
       <CustomControls
         snapshot={snapshot}
-        state={state}
+        state={events.state}
         title={source.title}
         isLive={!!source.isLive}
-        hasError={!!error}
-        errorTitle={error?.title}
-        errorHint={error?.hint}
-        errorRetryable={error?.retryable}
-        isInAdBreak={adState.inAdBreak}
+        hasError={!!errorMgr.error}
+        errorTitle={errorMgr.error?.title}
+        errorHint={errorMgr.error?.hint}
+        errorRetryable={errorMgr.error?.retryable}
+        isInAdBreak={ads.adState.inAdBreak}
         isEnded={isEnded}
         rate={rate}
         resizeMode={resizeMode}
-        isFullscreen={isFullscreen}
+        isFullscreen={fullscreen.isFullscreen}
         canCast={cast.canCast}
         isCasting={cast.isCasting}
         spriteThumbnails={source.spriteThumbnails}
@@ -526,19 +316,19 @@ export function VideoPlayer({
         onReplay={onReplay}
         onSeek={seekTo}
         onSetRate={setRateImperative}
-        onSelectVideoTrack={onSelectVideoTrack}
-        onSelectAudioTrack={onSelectAudioTrack}
-        onSelectTextTrack={onSelectTextTrack}
+        onSelectVideoTrack={events.selectVideoTrack}
+        onSelectAudioTrack={events.selectAudioTrack}
+        onSelectTextTrack={events.selectTextTrack}
         onSelectResizeMode={setResizeMode}
-        onToggleFullscreen={onToggleFullscreen}
+        onToggleFullscreen={fullscreen.toggle}
         onRequestPiP={onRequestPiP}
-        onRetry={onRetry}
-        onRequestBack={isFullscreen ? onToggleFullscreen : onRequestBack}
+        onRetry={errorMgr.onRetry}
+        onRequestBack={fullscreen.isFullscreen ? fullscreen.toggle : onRequestBack}
       />
     </View>
   );
 
-  if (isFullscreen) {
+  if (fullscreen.isFullscreen) {
     return (
       <>
         {/* Inline placeholder keeps surrounding layout stable while fullscreen modal is open */}
@@ -547,7 +337,7 @@ export function VideoPlayer({
           visible
           animationType="fade"
           supportedOrientations={['landscape', 'portrait']}
-          onRequestClose={onToggleFullscreen}
+          onRequestClose={fullscreen.toggle}
           statusBarTranslucent
           navigationBarTranslucent>
           {playerBody}
