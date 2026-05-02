@@ -25,7 +25,7 @@ const NAV_THEME: { light: Theme; dark: Theme } = {
       primary: COLORS.dark.primary,
       text: COLORS.white,
     },
-     fonts: DarkTheme.fonts,
+    fonts: DarkTheme.fonts,
   },
 };
 

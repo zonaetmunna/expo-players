@@ -36,9 +36,7 @@ export default function AudioListScreen() {
                 )}
               </View>
               <View className="flex-1">
-                <Text
-                  className="text-base font-semibold text-card-foreground"
-                  numberOfLines={1}>
+                <Text className="text-base font-semibold text-card-foreground" numberOfLines={1}>
                   {item.title}
                 </Text>
                 {item.artist ? (

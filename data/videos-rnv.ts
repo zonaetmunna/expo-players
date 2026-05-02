@@ -1,7 +1,7 @@
 // Independent sample data for the react-native-video player.
 // Do NOT import from data/videos.ts (expo-video) — strict separation.
 
-import type { VideoItem } from '@/components/player/react-native-video/types';
+import type { VideoItem } from '@/packages/react-native-video/types';
 
 import type { Chip } from '@/components/CategoryChips';
 
@@ -60,8 +60,7 @@ export const VIDEOS: VideoItem[] = [
   {
     id: 'rnv-bipbop-hls',
     title: 'Apple BipBop 16:9 (HLS ABR)',
-    description:
-      'HLS master playlist with 6 video bitrates — quality picker shows real variants.',
+    description: 'HLS master playlist with 6 video bitrates — quality picker shows real variants.',
     uri: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8',
     type: 'hls',
     category: 'streaming',
@@ -207,9 +206,7 @@ export const VIDEOS: VideoItem[] = [
       android: { supported: true, minVersion: '5' },
       web: { supported: true, browsers: ['Chrome', 'Firefox', 'Edge'] },
     },
-    knownIssues: [
-      'License server is the Shaka proxy — Bitmovin\'s own server requires auth tokens',
-    ],
+    knownIssues: ["License server is the Shaka proxy — Bitmovin's own server requires auth tokens"],
     source: 'Bitmovin demo assets + cwip-shaka-proxy',
     license: 'Free for testing',
   },
@@ -227,8 +224,7 @@ export const VIDEOS: VideoItem[] = [
     resolution: '1080p',
     drm: {
       type: 'widevine',
-      licenseServer:
-        'https://drm-widevine-licensing.axtest.net/AcquireLicense',
+      licenseServer: 'https://drm-widevine-licensing.axtest.net/AcquireLicense',
       headers: {
         'X-AxDRM-Message':
           'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ2ZXJzaW9uIjoxLCJjb21fa2V5X2lkIjoiYjMzNjRlYjUtNTFmNi00YWUzLThjOTgtMzNjZWQ1ZTMxYzc4IiwibWVzc2FnZSI6eyJ0eXBlIjoiZW50aXRsZW1lbnRfbWVzc2FnZSIsImtleXMiOlt7ImlkIjoiOWViNDA1MGQtZTQ0Yi00ODAyLTkzMmUtMjdkNzUwODNlMjY2IiwiZW5jcnlwdGVkX2tleSI6ImxLM09qSExZVzI0Y3Iya3RSNzRmbnc9PSJ9XX19.4lWwW46k-oWcah8oN18LPj5OLS5ZU-_AQv7fe0JhNjA',
@@ -249,7 +245,7 @@ export const VIDEOS: VideoItem[] = [
     id: 'rnv-drm-fairplay-apple-bipbop',
     title: 'DRM FairPlay — Apple BipBop (HLS)',
     description:
-      'Apple\'s reference FairPlay HLS stream with sample-AES encryption. iOS-only — test the FairPlay code path.',
+      "Apple's reference FairPlay HLS stream with sample-AES encryption. iOS-only — test the FairPlay code path.",
     uri: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8',
     type: 'hls',
     category: 'drm',
@@ -284,8 +280,7 @@ export const VIDEOS: VideoItem[] = [
   {
     id: 'rnv-ads-preroll-single',
     title: 'IMA Ads — Single Pre-roll (VAST Linear)',
-    description:
-      'Plain VAST tag returning a single linear pre-roll ad. Simplest IMA case.',
+    description: 'Plain VAST tag returning a single linear pre-roll ad. Simplest IMA case.',
     uri: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_1MB.mp4',
     type: 'mp4',
     category: 'ads',
@@ -498,12 +493,14 @@ export const VIDEOS: VideoItem[] = [
     resolution: '720p',
     platforms: {
       ios: { supported: true, minVersion: '11' },
-      android: { supported: true, minVersion: '5', note: 'Hardware decoder required on older devices' },
+      android: {
+        supported: true,
+        minVersion: '5',
+        note: 'Hardware decoder required on older devices',
+      },
       web: { supported: false, note: 'rn-video has no web build' },
     },
-    knownIssues: [
-      'Older Android devices without HEVC hardware decoder will fail to load',
-    ],
+    knownIssues: ['Older Android devices without HEVC hardware decoder will fail to load'],
     source: 'test-videos.co.uk (Blender Foundation content)',
     license: 'Creative Commons',
   },
@@ -550,7 +547,7 @@ export const VIDEOS: VideoItem[] = [
     id: 'rnv-codec-vp9-webm',
     title: 'VP9 in WebM — 720p',
     description:
-      'Google\'s royalty-free VP9 codec in a WebM container. Android-native; iOS does NOT decode VP9 in rn-video (AVPlayer rejects WebM).',
+      "Google's royalty-free VP9 codec in a WebM container. Android-native; iOS does NOT decode VP9 in rn-video (AVPlayer rejects WebM).",
     uri: 'https://test-videos.co.uk/vids/bigbuckbunny/webm/vp9/720/Big_Buck_Bunny_720_10s_1MB.webm',
     type: 'webm',
     category: 'codec-test',
@@ -583,9 +580,7 @@ export const VIDEOS: VideoItem[] = [
       android: { supported: true, minVersion: '5' },
       web: { supported: false, note: 'rn-video has no web build' },
     },
-    knownIssues: [
-      'iOS will surface the DASH compat banner before VP9 even comes into play',
-    ],
+    knownIssues: ['iOS will surface the DASH compat banner before VP9 even comes into play'],
     source: 'Google ExoPlayer test media bucket',
     license: 'Free for testing',
   },
@@ -674,8 +669,7 @@ export const VIDEOS: VideoItem[] = [
     codecAudio: 'aac',
     resolution: '1080p',
     spriteThumbnails: {
-      vttUri:
-        'https://image.mux.com/VZtzUzGRv02OhRnZCxcNg49OilvolTqdnFLEqBsTwaxU/storyboard.vtt',
+      vttUri: 'https://image.mux.com/VZtzUzGRv02OhRnZCxcNg49OilvolTqdnFLEqBsTwaxU/storyboard.vtt',
     },
     platforms: {
       ios: { supported: true, minVersion: '4' },
@@ -688,8 +682,7 @@ export const VIDEOS: VideoItem[] = [
   {
     id: 'rnv-jw-sprite-thumbnails',
     title: 'JW Player Sintel — Sprite Thumbnails',
-    description:
-      'JW Player Sintel HLS with sprite-sheet preview thumbnails. Drag the scrubber.',
+    description: 'JW Player Sintel HLS with sprite-sheet preview thumbnails. Drag the scrubber.',
     uri: 'https://content.jwplatform.com/manifests/lWMJeVvV.m3u8',
     type: 'hls',
     category: 'streaming',
@@ -710,8 +703,7 @@ export const VIDEOS: VideoItem[] = [
   {
     id: 'rnv-broken-404',
     title: 'Broken URL (404 — error UI test)',
-    description:
-      'httpbin returns a real 404 — exercises the player error overlay + retry button.',
+    description: 'httpbin returns a real 404 — exercises the player error overlay + retry button.',
     uri: 'https://httpbin.org/status/404',
     type: 'mp4',
     category: 'edge-case',

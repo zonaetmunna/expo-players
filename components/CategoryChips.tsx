@@ -30,11 +30,7 @@ export function CategoryChips<K extends string>({ chips, active, onChange }: Pro
       contentContainerClassName="px-3 py-1.5 gap-1.5 items-center">
       {chips.map((c) => {
         const isActive = active === c.key;
-        const iconColor = isActive
-          ? '#ffffff'
-          : isDarkColorScheme
-            ? '#cbd5e1'
-            : '#475569';
+        const iconColor = isActive ? '#ffffff' : isDarkColorScheme ? '#cbd5e1' : '#475569';
         return (
           <Pressable
             key={c.key}

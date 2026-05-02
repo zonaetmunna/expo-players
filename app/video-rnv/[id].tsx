@@ -1,8 +1,8 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ScrollView, Text, View } from 'react-native';
 
-import { VideoPlayer } from '@/components/player/react-native-video';
-import type { VideoItem } from '@/components/player/react-native-video/types';
+import { VideoPlayer } from '@/packages/react-native-video';
+import type { VideoItem } from '@/packages/react-native-video/types';
 import { VIDEOS } from '@/data/videos-rnv';
 
 export default function RnvVideoDetailsScreen() {
@@ -101,9 +101,7 @@ export default function RnvVideoDetailsScreen() {
             🔗 Source
           </Text>
           <View className="rounded-xl bg-card p-3">
-            {video.source ? (
-              <Text className="text-sm text-foreground">{video.source}</Text>
-            ) : null}
+            {video.source ? <Text className="text-sm text-foreground">{video.source}</Text> : null}
             {video.license ? (
               <Text className="mt-0.5 text-xs text-muted-foreground">{video.license}</Text>
             ) : null}

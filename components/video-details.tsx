@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Text, View } from 'react-native';
 
-import type { PlatformSupport, VideoItem } from '@/components/player/expo-video/types';
+import type { PlatformSupport, VideoItem } from '@/packages/expo-video/types';
 
 export function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -34,9 +34,7 @@ export function PlatformRow({ label, p }: { label: string; p: PlatformSupport })
           <Text className="text-xs text-muted-foreground">Min version: {p.minVersion}</Text>
         ) : null}
         {p.browsers && p.browsers.length > 0 ? (
-          <Text className="text-xs text-muted-foreground">
-            Browsers: {p.browsers.join(', ')}
-          </Text>
+          <Text className="text-xs text-muted-foreground">Browsers: {p.browsers.join(', ')}</Text>
         ) : null}
         {p.note ? <Text className="text-xs text-muted-foreground">{p.note}</Text> : null}
       </View>

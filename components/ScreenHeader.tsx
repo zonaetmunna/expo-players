@@ -12,12 +12,7 @@ type Props = {
   showSettings?: boolean;
 };
 
-export function ScreenHeader({
-  title,
-  badge,
-  showMenu = true,
-  showSettings = true,
-}: Props) {
+export function ScreenHeader({ title, badge, showMenu = true, showSettings = true }: Props) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { isDarkColorScheme } = useColorScheme();
@@ -55,9 +50,7 @@ export function ScreenHeader({
 
         {showSettings ? (
           <Link href="/modal" asChild>
-            <Pressable
-              hitSlop={8}
-              className="h-9 w-9 items-center justify-center rounded-full">
+            <Pressable hitSlop={8} className="h-9 w-9 items-center justify-center rounded-full">
               <Ionicons name="settings-outline" size={20} color={iconColor} />
             </Pressable>
           </Link>

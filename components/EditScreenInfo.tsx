@@ -2,12 +2,10 @@ import { StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/nativewindui/Text';
 
-
-
 export default function EditScreenInfo({ path }: { path: string }) {
-
-  const title = "Open up the code for this screen:"
-  const description = "Change any of the text, save the file, and your app will automatically update."
+  const title = 'Open up the code for this screen:';
+  const description =
+    'Change any of the text, save the file, and your app will automatically update.';
 
   return (
     <View style={styles.getStartedContainer}>

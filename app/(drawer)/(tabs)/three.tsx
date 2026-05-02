@@ -5,7 +5,7 @@ import { Image, Pressable, Text, View } from 'react-native';
 
 import { CategoryChips } from '@/components/CategoryChips';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import type { VideoItem } from '@/components/player/react-native-video/types';
+import type { VideoItem } from '@/packages/react-native-video/types';
 import { VIDEO_CATEGORIES, VIDEOS, type VideoCategoryKey } from '@/data/videos-rnv';
 
 function formatDuration(seconds?: number) {
@@ -44,9 +44,7 @@ export default function RnvVideoListScreen() {
         keyExtractor={(item) => item.id}
         contentContainerClassName="px-3 pb-6"
         renderItem={({ item }) => (
-          <Link
-            href={`/video-rnv/${item.id}` as never}
-            asChild>
+          <Link href={`/video-rnv/${item.id}` as never} asChild>
             <Pressable className="mb-4 overflow-hidden rounded-2xl bg-card shadow-sm active:opacity-80">
               <View className="relative aspect-video w-full bg-black">
                 {item.poster ? (
@@ -91,9 +89,7 @@ export default function RnvVideoListScreen() {
                   ) : null}
                   {item.subtitles && item.subtitles.length > 0 ? (
                     <View className="rounded bg-blue-600 px-2 py-0.5">
-                      <Text className="text-[11px] font-bold tracking-wide text-white">
-                        +SUBS
-                      </Text>
+                      <Text className="text-[11px] font-bold tracking-wide text-white">+SUBS</Text>
                     </View>
                   ) : null}
                   {item.knownIssues && item.knownIssues.length > 0 ? (
@@ -116,9 +112,7 @@ export default function RnvVideoListScreen() {
               </View>
 
               <View className="gap-1 p-3">
-                <Text
-                  className="text-base font-semibold text-card-foreground"
-                  numberOfLines={1}>
+                <Text className="text-base font-semibold text-card-foreground" numberOfLines={1}>
                   {item.title}
                 </Text>
                 {item.description ? (

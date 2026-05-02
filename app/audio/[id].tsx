@@ -1,7 +1,7 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Image, ScrollView, Text, View } from 'react-native';
 
-import { AudioPlayer } from '@/components/player/audio';
+import { AudioPlayer } from '@/packages/audio';
 import { AUDIOS } from '@/data/audios';
 
 export default function AudioDetailsScreen() {
@@ -18,9 +18,7 @@ export default function AudioDetailsScreen() {
   }
 
   return (
-    <ScrollView
-      className="flex-1 bg-background"
-      contentContainerClassName="pb-8">
+    <ScrollView className="flex-1 bg-background" contentContainerClassName="pb-8">
       <Stack.Screen options={{ title: audio.title }} />
       <View className="items-center px-6 pt-6">
         <View className="aspect-square w-full max-w-sm overflow-hidden rounded-2xl bg-neutral-200">

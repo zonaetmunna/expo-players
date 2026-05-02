@@ -1,11 +1,12 @@
-import type { VideoItem } from '@/components/player/expo-video/types';
+import type { VideoItem } from '@/packages/expo-video/types';
 
 export const VIDEOS: VideoItem[] = [
   {
     id: 'progressive-h264-bbb',
     title: 'Big Buck Bunny (H.264 MP4)',
     description: 'Universal H.264 baseline. Plays on every device + browser.',
-    poster: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg',
+    poster:
+      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg',
     uri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
     type: 'mp4',
     category: 'progressive',
@@ -25,7 +26,8 @@ export const VIDEOS: VideoItem[] = [
     id: 'progressive-h264-elephants',
     title: 'Elephants Dream (H.264 MP4)',
     description: 'Second Blender open-movie progressive sample.',
-    poster: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ElephantsDream.jpg',
+    poster:
+      'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ElephantsDream.jpg',
     uri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
     type: 'mp4',
     category: 'progressive',
@@ -55,7 +57,11 @@ export const VIDEOS: VideoItem[] = [
     platforms: {
       ios: { supported: true, minVersion: '11' },
       android: { supported: true, minVersion: '5' },
-      web: { supported: true, browsers: ['Safari', 'Edge'], note: 'Chrome/Firefox lack HEVC by default' },
+      web: {
+        supported: true,
+        browsers: ['Safari', 'Edge'],
+        note: 'Chrome/Firefox lack HEVC by default',
+      },
     },
     knownIssues: ['Chrome desktop fails without hardware HEVC', 'Firefox: no HEVC'],
     source: 'test-videos.co.uk',
@@ -134,7 +140,11 @@ export const VIDEOS: VideoItem[] = [
     platforms: {
       ios: { supported: false },
       android: { supported: false, note: 'Native Android does not decode Theora' },
-      web: { supported: true, browsers: ['Firefox'], note: 'Chrome dropped Theora; Safari never had it' },
+      web: {
+        supported: true,
+        browsers: ['Firefox'],
+        note: 'Chrome dropped Theora; Safari never had it',
+      },
     },
     knownIssues: ['Useful only for fallback / error UI testing'],
     source: 'Wikimedia Commons',
@@ -153,7 +163,11 @@ export const VIDEOS: VideoItem[] = [
     platforms: {
       ios: { supported: true, minVersion: '4' },
       android: { supported: true, minVersion: '5' },
-      web: { supported: true, browsers: ['Safari', 'Chrome', 'Firefox', 'Edge'], note: 'hls.js for non-Safari' },
+      web: {
+        supported: true,
+        browsers: ['Safari', 'Chrome', 'Firefox', 'Edge'],
+        note: 'hls.js for non-Safari',
+      },
     },
     source: 'Apple BipBop reference',
     license: 'Apple sample, free for testing',
@@ -180,7 +194,8 @@ export const VIDEOS: VideoItem[] = [
   {
     id: 'hls-fmp4-bipbop-advanced',
     title: 'Apple BipBop Advanced (HLS fMP4 / CMAF)',
-    description: 'fMP4 segmented HLS with multi-audio (AAC, AC-3 5.1, EC-3 Atmos), VTT subs, CEA-608 captions, I-frame trickplay.',
+    description:
+      'fMP4 segmented HLS with multi-audio (AAC, AC-3 5.1, EC-3 Atmos), VTT subs, CEA-608 captions, I-frame trickplay.',
     uri: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8',
     type: 'hls',
     category: 'streaming',
@@ -190,7 +205,11 @@ export const VIDEOS: VideoItem[] = [
     platforms: {
       ios: { supported: true, minVersion: '10' },
       android: { supported: true, minVersion: '5' },
-      web: { supported: true, browsers: ['Safari', 'Chrome', 'Firefox', 'Edge'], note: 'hls.js v1+ for fMP4' },
+      web: {
+        supported: true,
+        browsers: ['Safari', 'Chrome', 'Firefox', 'Edge'],
+        note: 'hls.js v1+ for fMP4',
+      },
     },
     source: 'Apple BipBop Advanced',
     license: 'Apple sample, free for testing',
@@ -237,7 +256,8 @@ export const VIDEOS: VideoItem[] = [
   {
     id: 'dash-angel-one-multi',
     title: 'Angel One — Multi-Audio Multi-Sub DASH',
-    description: 'Shaka demo: H.264+VP9, 5 audio languages (AAC + Opus), 4 WebVTT subtitle languages.',
+    description:
+      'Shaka demo: H.264+VP9, 5 audio languages (AAC + Opus), 4 WebVTT subtitle languages.',
     uri: 'https://storage.googleapis.com/shaka-demo-assets/angel-one/dash.mpd',
     type: 'dash',
     category: 'streaming',
@@ -305,7 +325,10 @@ export const VIDEOS: VideoItem[] = [
     codecVideo: 'h264',
     codecAudio: 'aac',
     resolution: '4k',
-    drm: { type: 'playready', licenseServer: 'https://drm-playready-licensing.axtest.net/AcquireLicense' },
+    drm: {
+      type: 'playready',
+      licenseServer: 'https://drm-playready-licensing.axtest.net/AcquireLicense',
+    },
     platforms: {
       ios: { supported: false },
       android: { supported: true, minVersion: '5', note: 'Widevine path' },
@@ -358,7 +381,8 @@ export const VIDEOS: VideoItem[] = [
   {
     id: 'hdr-dolby-vision-apple',
     title: '4K Dolby Vision + Atmos (HLS)',
-    description: 'Apple advanced sample: HEVC + Dolby Vision (dvh1) up to 4K, AC-3 5.1, EC-3 Atmos, multi-language SDH/DVS subs.',
+    description:
+      'Apple advanced sample: HEVC + Dolby Vision (dvh1) up to 4K, AC-3 5.1, EC-3 Atmos, multi-language SDH/DVS subs.',
     uri: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/adv_dv_atmos/main.m3u8',
     type: 'hls',
     category: 'codec-test',
@@ -371,7 +395,10 @@ export const VIDEOS: VideoItem[] = [
       android: { supported: true, minVersion: '10', note: 'Hardware DV/HDR10 dependent' },
       web: { supported: true, browsers: ['Safari'], note: 'Chromium DV is partial' },
     },
-    knownIssues: ['Falls back to SDR HEVC if device lacks DV', 'Atmos rendition needs ec-3 decoder'],
+    knownIssues: [
+      'Falls back to SDR HEVC if device lacks DV',
+      'Atmos rendition needs ec-3 decoder',
+    ],
     source: 'Apple Advanced sample',
     license: 'Apple sample, free for testing',
   },
@@ -388,7 +415,11 @@ export const VIDEOS: VideoItem[] = [
     platforms: {
       ios: { supported: true, note: 'Will fail to load' },
       android: { supported: true, note: 'Will fail to load' },
-      web: { supported: true, browsers: ['Chrome', 'Firefox', 'Safari', 'Edge'], note: 'Will fail to load' },
+      web: {
+        supported: true,
+        browsers: ['Chrome', 'Firefox', 'Safari', 'Edge'],
+        note: 'Will fail to load',
+      },
     },
     knownIssues: ['Always returns 404 — used to verify error UI'],
     source: 'Synthetic',

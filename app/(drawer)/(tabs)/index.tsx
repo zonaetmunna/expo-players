@@ -5,7 +5,7 @@ import { Image, Pressable, Text, View } from 'react-native';
 
 import { CategoryChips } from '@/components/CategoryChips';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import type { VideoItem } from '@/components/player/expo-video/types';
+import type { VideoItem } from '@/packages/expo-video/types';
 import { VIDEO_CATEGORIES, VIDEOS, type VideoCategoryKey } from '@/data/videos';
 
 function formatDuration(seconds?: number) {
@@ -114,9 +114,7 @@ export default function VideoListScreen() {
               </View>
 
               <View className="gap-1 p-3">
-                <Text
-                  className="text-base font-semibold text-card-foreground"
-                  numberOfLines={1}>
+                <Text className="text-base font-semibold text-card-foreground" numberOfLines={1}>
                   {item.title}
                 </Text>
                 {item.description ? (

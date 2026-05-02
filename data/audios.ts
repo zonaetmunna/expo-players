@@ -1,4 +1,4 @@
-import type { AudioItem } from '@/components/player/audio/types';
+import type { AudioItem } from '@/packages/audio/types';
 
 export const AUDIOS: AudioItem[] = [
   {

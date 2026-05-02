@@ -27,9 +27,9 @@ function withOpacityHex(hex: string, opacity: number): string {
   const expandedHex =
     hexCode.length === 3
       ? hexCode
-        .split('')
-        .map((x) => x + x)
-        .join('')
+          .split('')
+          .map((x) => x + x)
+          .join('')
       : hexCode;
 
   const r = parseInt(expandedHex.substr(0, 2), 16);
