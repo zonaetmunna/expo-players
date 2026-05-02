@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
+import { useBuffering } from '../../core/useSnapshotField';
 import { CastButton } from '../cast/bridges/castBridge';
 import { SettingsSheet } from './SettingsSheet';
 import { SkinScrubber } from './SkinScrubber';
@@ -52,6 +53,7 @@ export function YouTubeSkin(props: SkinProps) {
   } = props;
 
   const ctrl = useSkinControlsState(props);
+  const buffering = useBuffering(props.snapshot);
 
   // IMA SDK draws skip / countdown / click-through during ad breaks. Hide our
   // chrome so it doesn't paint over the IMA UI.
@@ -154,7 +156,7 @@ export function YouTubeSkin(props: SkinProps) {
               hitSlop={12}
               style={styles.playBtn}
               disabled={!state.isLoaded}>
-              {ctrl.seekPending != null || state.buffering ? (
+              {ctrl.seekPending != null || buffering ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
                 <Ionicons

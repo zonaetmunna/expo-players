@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, Platform, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { Modal, Platform, StatusBar, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Video, { type ISO639_1, type TextTrackType, type VideoRef } from 'react-native-video';
 import {
   mapAudioTrackSelection,
@@ -8,6 +10,7 @@ import {
   mapVideoTrackSelection,
 } from './core/mappers';
 import type { ResizeMode } from './core/resizeMode';
+import { readPref, readVideo, removeVideo, writePref, writeVideo } from './core/storage';
 import { useFullscreen } from './core/useFullscreen';
 import { usePlayerError } from './core/usePlayerError';
 import { useRnvPlayerEvents } from './core/useRnvPlayerEvents';
@@ -49,13 +52,39 @@ export function VideoPlayer({
 }: Props) {
   const videoRef = useRef<VideoRef>(null);
   const snapshot = useRnvPlayerSnapshot();
+  // Safe-area insets — applied to the controls overlay in fullscreen so the
+  // top icons (cast / settings / PiP / close) clear the status bar and the
+  // landscape camera notch on Android.
+  const insets = useSafeAreaInsets();
 
   // No local `paused` state — runtime play/pause goes through videoRef
   // (the prop races with the media-session service).
   const [rate, setRate] = useState(1);
   const [resizeMode, setResizeMode] = useState<ResizeMode>(initialResizeMode);
-  const [skin, setSkin] = useState<SkinId>(initialSkin);
+  const [skin, setSkinState] = useState<SkinId>(initialSkin);
   const [isEnded, setIsEnded] = useState(false);
+
+  // Persisted skin: load saved choice on mount, save on every change.
+  // The default `initialSkin` shows for ~50ms before the stored value snaps in.
+  useEffect(() => {
+    let cancelled = false;
+    readPref<SkinId>('skin').then((stored) => {
+      if (
+        !cancelled &&
+        stored &&
+        (stored === 'default' || stored === 'netflix' || stored === 'youtube')
+      ) {
+        setSkinState(stored);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const setSkin = useCallback((next: SkinId) => {
+    setSkinState(next);
+    writePref('skin', next);
+  }, []);
 
   const fullscreen = useFullscreen();
   const errorMgr = usePlayerError({ drm: source.drm });
@@ -65,23 +94,101 @@ export function VideoPlayer({
     if (!loop) {
       videoRef.current?.pause();
       setIsEnded(true);
+      // Clear saved resume position on natural end so next play starts fresh.
+      removeVideo(source.id, 'position');
     }
-  }, [loop]);
+  }, [loop, source.id]);
 
   const events = useRnvPlayerEvents({
+    snapshot,
     initialVolume,
     autoPlay,
     initialDuration: source.duration ?? 0,
     onEnd: handleEnd,
   });
 
-  // Mirror state into a ref so gesture worklets can read it on the JS thread.
+  // Resume position — load saved position when the video reports loaded, then
+  // periodically save current position. Cleared on natural end so a finished
+  // video starts from the beginning next time.
+  // Skip for live (no scrubbable timeline) and skip if the source duration is
+  // unknown (we can't tell where "near the end" is).
+  const sourceIdForResume = source.id;
+  const isLiveForResume = !!source.isLive;
+  const hasResumedRef = useRef(false);
+  // Synchronous in-memory hand-off used by the fullscreen toggle to carry
+  // playback position across the Modal-induced Video remount, without waiting
+  // for the AsyncStorage roundtrip.
+  const pendingResumeRef = useRef<number | null>(null);
+
+  // Reset resume guard when source changes. The body reads sourceIdForResume
+  // (via the log) so exhaustive-deps recognizes it as the trigger.
   useEffect(() => {
-    snapshot.current = events.state;
-  }, [events.state, snapshot]);
+    if (__DEV__) console.log('[rn-video] resume guard reset for source', sourceIdForResume);
+    hasResumedRef.current = false;
+    pendingResumeRef.current = null;
+  }, [sourceIdForResume]);
+
+  // Seek to saved position once after the video reports loaded.
+  // Priority: in-memory pending hand-off (fullscreen toggle) → AsyncStorage.
+  useEffect(() => {
+    if (isLiveForResume || hasResumedRef.current) return;
+    if (!events.state.isLoaded) return;
+    hasResumedRef.current = true;
+
+    const dur = events.state.duration;
+
+    // 1. Pending hand-off from a fullscreen toggle wins — no async wait.
+    const pending = pendingResumeRef.current;
+    pendingResumeRef.current = null;
+    if (pending != null && pending >= 1) {
+      if (!dur || pending < dur - 1) {
+        videoRef.current?.seek(pending);
+      }
+      return;
+    }
+
+    // 2. Otherwise fall back to the persisted position from AsyncStorage.
+    readVideo<number>(sourceIdForResume, 'position').then((saved) => {
+      if (saved == null || saved < 5) return; // skip very-near-start saves
+      if (dur && saved >= dur - 10) return; // let near-end videos play out
+      videoRef.current?.seek(saved);
+    });
+  }, [events.state.isLoaded, events.state.duration, sourceIdForResume, isLiveForResume]);
+
+  // Throttled position save while playing.
+  const lastSaveRef = useRef(0);
+  useEffect(() => {
+    if (isLiveForResume) return;
+    const id = setInterval(() => {
+      const now = Date.now();
+      if (now - lastSaveRef.current < 4000) return; // save at most every ~4s
+      const t = snapshot.current.currentTime;
+      if (!Number.isFinite(t) || t < 1) return;
+      lastSaveRef.current = now;
+      writeVideo(sourceIdForResume, 'position', t);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [sourceIdForResume, isLiveForResume, snapshot]);
+
+  // Final save on unmount + clear when video ends naturally.
+  useEffect(() => {
+    return () => {
+      if (isLiveForResume) return;
+      const t = snapshot.current.currentTime;
+      const dur = snapshot.current.duration;
+      // If we're near the end, clear instead of saving (already finished).
+      if (dur && t >= dur - 5) {
+        removeVideo(sourceIdForResume, 'position');
+        return;
+      }
+      if (Number.isFinite(t) && t > 1) {
+        writeVideo(sourceIdForResume, 'position', t);
+      }
+    };
+  }, [sourceIdForResume, isLiveForResume, snapshot]);
 
   // Surface a banner instead of handing rn-video a config it can't play.
-  const compatError = (() => {
+  const compatError = useMemo(() => {
     if (Platform.OS === 'ios' && source.type === 'dash') {
       return 'MPEG-DASH is not supported on iOS. Use HLS or progressive MP4 instead.';
     }
@@ -115,7 +222,7 @@ export function VideoPlayer({
       }
     }
     return null;
-  })();
+  }, [source.type, source.drm, source.ads]);
 
   // Cast handoff: pause local on start, resume at receiver's position on end.
   const handleCastStart = useCallback(() => {
@@ -137,7 +244,7 @@ export function VideoPlayer({
   // exhaustive-deps sees it as the real trigger.
   const sourceId = source.id;
   useEffect(() => {
-    console.log('[rn-video] reset for source', sourceId);
+    if (__DEV__) console.log('[rn-video] reset for source', sourceId);
     setIsEnded(false);
     errorMgr.clearError();
     setRate(1);
@@ -145,21 +252,28 @@ export function VideoPlayer({
   }, [sourceId, errorMgr, ads]);
 
   // Imperative actions — routed to cast session when active, else local.
-  const seekTo = (time: number) => {
-    if (source.isLive) return; // live has no scrubbable timeline
-    setIsEnded(false);
-    cast.remoteSeek(time).then((handled) => {
-      if (!handled) videoRef.current?.seek(time);
-    });
-  };
+  const seekTo = useCallback(
+    (time: number) => {
+      if (source.isLive) return; // live has no scrubbable timeline
+      setIsEnded(false);
+      cast.remoteSeek(time).then((handled) => {
+        if (!handled) videoRef.current?.seek(time);
+      });
+    },
+    [source.isLive, cast]
+  );
 
-  const setRateImperative = (r: number) => {
-    cast.remoteSetRate(r);
-    setRate(r);
-  };
+  const setRateImperative = useCallback(
+    (r: number) => {
+      if (__DEV__) console.log('[rn-video] setRate called with', r, 'isCasting:', cast.isCasting);
+      cast.remoteSetRate(r);
+      setRate(r);
+    },
+    [cast]
+  );
 
   // Imperative pause/resume — the `paused` prop loses races with the media session.
-  const onPlay = () => {
+  const onPlay = useCallback(() => {
     if (!cast.isCasting) {
       videoRef.current?.resume();
       return;
@@ -167,8 +281,9 @@ export function VideoPlayer({
     cast.remotePlay().then((handled) => {
       if (!handled) videoRef.current?.resume();
     });
-  };
-  const onPause = () => {
+  }, [cast]);
+
+  const onPause = useCallback(() => {
     if (!cast.isCasting) {
       videoRef.current?.pause();
       return;
@@ -176,26 +291,38 @@ export function VideoPlayer({
     cast.remotePause().then((handled) => {
       if (!handled) videoRef.current?.pause();
     });
-  };
+  }, [cast]);
 
-  const onRequestPiP = () => {
+  const onRequestPiP = useCallback(() => {
     try {
       videoRef.current?.enterPictureInPicture();
     } catch {
       // ignore
     }
-  };
+  }, []);
 
-  const onReplay = () => {
+  const onReplay = useCallback(() => {
     videoRef.current?.seek(0);
     videoRef.current?.resume();
     setIsEnded(false);
-  };
+  }, []);
+
+  const handleToggleFullscreen = useCallback(async () => {
+    if (!isLiveForResume) {
+      const t = snapshot.current.currentTime;
+      if (Number.isFinite(t) && t >= 1) {
+        pendingResumeRef.current = t;
+        hasResumedRef.current = false;
+        events.setState((s) => ({ ...s, isLoaded: false }));
+      }
+    }
+    await fullscreen.toggle();
+  }, [fullscreen, isLiveForResume, snapshot, events]);
 
   // Memoize so rn-video doesn't see a "new" source every render and rebuffer.
   const videoSource = useMemo(() => {
     const mappedAd = mapAds(source.ads);
-    if (source.ads) {
+    if (__DEV__ && source.ads) {
       console.log('[rn-video] ads config attached to source', {
         title: source.title,
         rawAds: source.ads,
@@ -224,7 +351,31 @@ export function VideoPlayer({
         uri: s.uri,
       })),
     };
-  }, [source]);
+  }, [
+    source.uri,
+    source.drm,
+    source.ads,
+    source.subtitles,
+    source.title,
+    source.description,
+    source.poster,
+  ]);
+
+  // Memoize enum mapper outputs so they don't allocate fresh objects every
+  // render — rn-video diffs these props by identity.
+  const rnvResizeMode = useMemo(() => mapResizeMode(resizeMode), [resizeMode]);
+  const rnvVideoTrack = useMemo(
+    () => mapVideoTrackSelection(events.state.selectedVideoTrack),
+    [events.state.selectedVideoTrack]
+  );
+  const rnvAudioTrack = useMemo(
+    () => mapAudioTrackSelection(events.state.selectedAudioTrack),
+    [events.state.selectedAudioTrack]
+  );
+  const rnvTextTrack = useMemo(
+    () => mapTextTrackSelection(events.state.selectedTextTrack),
+    [events.state.selectedTextTrack]
+  );
 
   const playerBody = (
     <View
@@ -251,10 +402,10 @@ export function VideoPlayer({
           repeat={loop}
           rate={rate}
           volume={events.state.volume}
-          resizeMode={mapResizeMode(resizeMode)}
-          selectedVideoTrack={mapVideoTrackSelection(events.state.selectedVideoTrack)}
-          selectedAudioTrack={mapAudioTrackSelection(events.state.selectedAudioTrack)}
-          selectedTextTrack={mapTextTrackSelection(events.state.selectedTextTrack)}
+          resizeMode={rnvResizeMode}
+          selectedVideoTrack={rnvVideoTrack}
+          selectedAudioTrack={rnvAudioTrack}
+          selectedTextTrack={rnvTextTrack}
           playInBackground
           showNotificationControls
           enterPictureInPictureOnLeave
@@ -275,55 +426,73 @@ export function VideoPlayer({
         </View>
       ) : null}
 
-      <CustomControls
-        snapshot={snapshot}
-        state={events.state}
-        title={source.title}
-        isLive={!!source.isLive}
-        hasError={!!errorMgr.error}
-        errorTitle={errorMgr.error?.title}
-        errorHint={errorMgr.error?.hint}
-        errorRetryable={errorMgr.error?.retryable}
-        isInAdBreak={ads.adState.inAdBreak}
-        isEnded={isEnded}
-        rate={rate}
-        resizeMode={resizeMode}
-        isFullscreen={fullscreen.isFullscreen}
-        canCast={cast.canCast}
-        isCasting={cast.isCasting}
-        spriteThumbnails={source.spriteThumbnails}
-        skin={skin}
-        onSelectSkin={setSkin}
-        onPlay={onPlay}
-        onPause={onPause}
-        onReplay={onReplay}
-        onSeek={seekTo}
-        onSetRate={setRateImperative}
-        onSelectVideoTrack={events.selectVideoTrack}
-        onSelectAudioTrack={events.selectAudioTrack}
-        onSelectTextTrack={events.selectTextTrack}
-        onSelectResizeMode={setResizeMode}
-        onToggleFullscreen={fullscreen.toggle}
-        onRequestPiP={onRequestPiP}
-        onRetry={errorMgr.onRetry}
-        onRequestBack={fullscreen.isFullscreen ? fullscreen.toggle : onRequestBack}
-      />
+      <View
+        pointerEvents="box-none"
+        style={
+          fullscreen.isFullscreen
+            ? [
+                StyleSheet.absoluteFill,
+                {
+                  paddingTop: insets.top,
+                  paddingBottom: insets.bottom,
+                  paddingLeft: insets.left,
+                  paddingRight: insets.right,
+                },
+              ]
+            : StyleSheet.absoluteFill
+        }>
+        <CustomControls
+          snapshot={snapshot}
+          state={events.state}
+          title={source.title}
+          isLive={!!source.isLive}
+          hasError={!!errorMgr.error}
+          errorTitle={errorMgr.error?.title}
+          errorHint={errorMgr.error?.hint}
+          errorRetryable={errorMgr.error?.retryable}
+          isInAdBreak={ads.adState.inAdBreak}
+          isEnded={isEnded}
+          rate={rate}
+          resizeMode={resizeMode}
+          isFullscreen={fullscreen.isFullscreen}
+          canCast={cast.canCast}
+          isCasting={cast.isCasting}
+          spriteThumbnails={source.spriteThumbnails}
+          skin={skin}
+          onSelectSkin={setSkin}
+          onPlay={onPlay}
+          onPause={onPause}
+          onReplay={onReplay}
+          onSeek={seekTo}
+          onSetRate={setRateImperative}
+          onSelectVideoTrack={events.selectVideoTrack}
+          onSelectAudioTrack={events.selectAudioTrack}
+          onSelectTextTrack={events.selectTextTrack}
+          onSelectResizeMode={setResizeMode}
+          onToggleFullscreen={handleToggleFullscreen}
+          onRequestPiP={onRequestPiP}
+          onRetry={errorMgr.onRetry}
+          onRequestBack={fullscreen.isFullscreen ? handleToggleFullscreen : onRequestBack}
+        />
+      </View>
     </View>
   );
 
   if (fullscreen.isFullscreen) {
     return (
       <>
-        {/* Placeholder keeps surrounding layout stable while the modal is open */}
         <View style={[styles.inlineContainer, style]} />
         <Modal
           visible
           animationType="fade"
           supportedOrientations={['landscape', 'portrait']}
-          onRequestClose={fullscreen.toggle}
+          onRequestClose={handleToggleFullscreen}
           statusBarTranslucent
           navigationBarTranslucent>
-          {playerBody}
+          <StatusBar hidden translucent />
+          <GestureHandlerRootView style={styles.fullscreenContainer}>
+            {playerBody}
+          </GestureHandlerRootView>
         </Modal>
       </>
     );

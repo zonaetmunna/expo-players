@@ -4,6 +4,7 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import { useColorScheme } from '@/lib/useColorScheme';
 
+import { useBuffering } from '../../core/useSnapshotField';
 import { CastButton } from '../cast/bridges/castBridge';
 import { SettingsSheet } from './SettingsSheet';
 import { SkinScrubber } from './SkinScrubber';
@@ -48,6 +49,7 @@ export function DefaultSkin(props: SkinProps) {
   } = props;
 
   const ctrl = useSkinControlsState(props);
+  const buffering = useBuffering(props.snapshot);
   const { colors } = useColorScheme();
   const accentColor = colors.primary;
   const retryColor = colors.primary;
@@ -161,7 +163,7 @@ export function DefaultSkin(props: SkinProps) {
               style={styles.playBtn}
               disabled={!state.isLoaded}
               accessibilityRole="button">
-              {ctrl.seekPending != null || state.buffering ? (
+              {ctrl.seekPending != null || buffering ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
                 <Ionicons

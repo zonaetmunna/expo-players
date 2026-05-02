@@ -3,7 +3,7 @@
 // the <Video key=...> prop — incrementing it forces rn-video to remount and
 // re-fetch the source (the canonical retry pattern for media players).
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { OnVideoErrorData } from 'react-native-video';
 
 import { describeDrmError } from '../features/drm/drm';
@@ -78,5 +78,11 @@ export function usePlayerError({ drm }: Options): PlayerError {
     setError(null);
   }, []);
 
-  return { error, clearError, reloadKey, onRetry, handleError };
+  // Memoize so consumers don't see a fresh object identity on every render —
+  // important because effects with this object in their deps would re-fire
+  // every render otherwise (state churn).
+  return useMemo(
+    () => ({ error, clearError, reloadKey, onRetry, handleError }),
+    [error, clearError, reloadKey, onRetry, handleError]
+  );
 }

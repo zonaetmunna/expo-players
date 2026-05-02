@@ -9,6 +9,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ThemeToggle } from '@/components/nativewindui/ThemeToggle';
 import { useColorScheme } from '@/lib/useColorScheme';
@@ -46,19 +47,21 @@ export default function RootLayout() {
         key={`root-status-bar-${isDarkColorScheme ? 'light' : 'dark'}`}
         style={isDarkColorScheme ? 'light' : 'dark'}
       />
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <ActionSheetProvider>
-          <NavThemeProvider value={NAV_THEME[colorScheme]}>
-            <Stack screenOptions={SCREEN_OPTIONS}>
-              <Stack.Screen name="(drawer)" options={DRAWER_OPTIONS} />
-              <Stack.Screen name="video/[id]" options={VIDEO_OPTIONS} />
-              <Stack.Screen name="video-rnv/[id]" options={VIDEO_OPTIONS} />
-              <Stack.Screen name="audio/[id]" options={AUDIO_OPTIONS} />
-              <Stack.Screen name="modal" options={MODAL_OPTIONS} />
-            </Stack>
-          </NavThemeProvider>
-        </ActionSheetProvider>
-      </GestureHandlerRootView>
+      <SafeAreaProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <ActionSheetProvider>
+            <NavThemeProvider value={NAV_THEME[colorScheme]}>
+              <Stack screenOptions={SCREEN_OPTIONS}>
+                <Stack.Screen name="(drawer)" options={DRAWER_OPTIONS} />
+                <Stack.Screen name="video/[id]" options={VIDEO_OPTIONS} />
+                <Stack.Screen name="video-rnv/[id]" options={VIDEO_OPTIONS} />
+                <Stack.Screen name="audio/[id]" options={AUDIO_OPTIONS} />
+                <Stack.Screen name="modal" options={MODAL_OPTIONS} />
+              </Stack>
+            </NavThemeProvider>
+          </ActionSheetProvider>
+        </GestureHandlerRootView>
+      </SafeAreaProvider>
     </>
   );
 }

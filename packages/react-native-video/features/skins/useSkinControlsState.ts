@@ -8,6 +8,7 @@
 // Skin components consume this via one hook call and then render their own UI.
 
 import { useEffect, useRef, useState } from 'react';
+import { useCurrentTime } from '../../core/useSnapshotField';
 import type { SpriteThumbnails } from '../../types/types';
 import { useSpriteThumbnails } from '../sprite-thumbnails/useSpriteThumbnails';
 import type { SkinProps } from './types';
@@ -46,6 +47,11 @@ export function useSkinControlsState({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [seekPending, setSeekPending] = useState<number | null>(null);
 
+  // currentTime is a hot field — read via the subscriber hook (4Hz cadence)
+  // instead of straight from state, so a paused video doesn't render at all
+  // and a playing one re-renders only the scrubber, not the whole player tree.
+  const currentTime = useCurrentTime(snapshot);
+
   const sprites = useSpriteThumbnails(spriteThumbnails as SpriteThumbnails | undefined);
   const spriteCue = sprites.ready && scrubbing ? sprites.getCueAt(scrubValue) : null;
 
@@ -61,10 +67,10 @@ export function useSkinControlsState({
   // Clear seekPending when the player has caught up
   useEffect(() => {
     if (seekPending == null) return;
-    if (Math.abs(state.currentTime - seekPending) < 0.7) {
+    if (Math.abs(currentTime - seekPending) < 0.7) {
       setSeekPending(null);
     }
-  }, [state.currentTime, seekPending]);
+  }, [currentTime, seekPending]);
 
   // Safety net: force-clear seekPending after 5s
   const seekTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -99,7 +105,7 @@ export function useSkinControlsState({
 
   const onScrubStart = () => {
     setScrubbing(true);
-    setScrubValue(state.currentTime);
+    setScrubValue(snapshot.current.currentTime);
     autoHide.show();
   };
 
@@ -146,7 +152,7 @@ export function useSkinControlsState({
     ? scrubValue
     : seekPending != null
       ? seekPending
-      : state.currentTime;
+      : currentTime;
 
   return {
     scrubbing,

@@ -16,13 +16,13 @@ export const SKIN_OPTIONS: { key: SkinId; label: string; sub: string }[] = [
 
 export type SkinProps = {
   snapshot: RnvSnapshotRef;
+  // Cold state only. Hot fields (currentTime, buffering) are read from the
+  // snapshot ref via useCurrentTime / useBuffering at a controlled cadence.
   state: Pick<
     RnvSnapshot,
-    | 'currentTime'
     | 'duration'
     | 'isLoaded'
     | 'isPlaying'
-    | 'buffering'
     | 'videoTracks'
     | 'selectedVideoTrack'
     | 'audioTracks'

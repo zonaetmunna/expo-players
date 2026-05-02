@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { VideoItem } from '../../types/types';
 import {
   CastState,
@@ -191,26 +191,37 @@ export function useCastSession({ source, onCastStart, onCastEnd, onUnmount = 'ke
     }
   }, [client]);
 
-  return {
-    /** True when a cast session is currently active and a client is available */
-    isCasting,
-    /** True when the source is allowed to cast (false for DRM) */
-    canCast,
-    /** State enum from the lib (NOT_CONNECTED / CONNECTING / CONNECTED / NO_DEVICES_AVAILABLE) */
-    castState,
-    /** Connected device — friendlyName, modelName, etc. */
-    device,
-    /** Current playback position on the cast device (seconds) */
-    remotePosition: typeof remotePosition === 'number' ? remotePosition : 0,
-    /** If loadMedia failed, the message */
-    loadError,
-
-    /** Routed actions — return true if handled by cast, false otherwise */
-    remotePlay,
-    remotePause,
-    remoteSeek,
-    remoteSetVolume,
-    remoteSetRate,
-    remoteStop,
-  };
+  // Memoize so consumers (VideoPlayer, CustomControls) don't see a fresh object
+  // identity on every render — important because useStreamPosition polls
+  // continuously and would otherwise force a re-render on every tick.
+  return useMemo(
+    () => ({
+      isCasting,
+      canCast,
+      castState,
+      device,
+      remotePosition: typeof remotePosition === 'number' ? remotePosition : 0,
+      loadError,
+      remotePlay,
+      remotePause,
+      remoteSeek,
+      remoteSetVolume,
+      remoteSetRate,
+      remoteStop,
+    }),
+    [
+      isCasting,
+      canCast,
+      castState,
+      device,
+      remotePosition,
+      loadError,
+      remotePlay,
+      remotePause,
+      remoteSeek,
+      remoteSetVolume,
+      remoteSetRate,
+      remoteStop,
+    ]
+  );
 }

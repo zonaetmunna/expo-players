@@ -15,11 +15,11 @@ export type Fullscreen = {
 export function useFullscreen(): Fullscreen {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Reset orientation + restore status bar on unmount so the rest of the
-  // app isn't left in landscape / hidden-status-bar state.
+  // Reset to portrait + restore status bar on unmount so the rest of the
+  // app isn't left in a rotated state.
   useEffect(() => {
     return () => {
-      ScreenOrientation.unlockAsync().catch(() => {});
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
       StatusBar.setHidden(false, 'fade');
       if (Platform.OS === 'android') {
         StatusBar.setTranslucent(false);
@@ -46,10 +46,16 @@ export function useFullscreen(): Fullscreen {
   const toggle = useCallback(async () => {
     try {
       if (isFullscreen) {
-        await ScreenOrientation.unlockAsync();
+        // Re-lock to portrait when leaving fullscreen so the app returns to
+        // its normal orientation regardless of how the phone is being held.
+        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
         setIsFullscreen(false);
       } else {
-        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+        // Unlock so the OS rotation-lock setting is respected:
+        //   - lock OFF → fullscreen rotates to match physical orientation
+        //   - lock ON  → fullscreen stays in user's locked orientation
+        // This matches YouTube / Netflix native behavior.
+        await ScreenOrientation.unlockAsync();
         setIsFullscreen(true);
       }
     } catch {

@@ -1,37 +1,33 @@
 // Owns the reactive snapshot of player state and the 6 native event handlers
-// that feed it. Keeps VideoPlayer.tsx free of plumbing — the component just
-// spreads the returned `videoEventProps` onto <Video> and reads `state` for
-// rendering.
-//
-// Track-selection setters live here too because they're trivially small and
-// belong with the state they mutate.
+// that feed it. Hot fields (currentTime, buffering) bypass React state entirely
+// — they're written directly into the snapshot ref. Consumers that need to
+// render them (the scrubber) subscribe via useCurrentTime / useBuffering.
+// This keeps onProgress (4Hz, perpetual) from re-rendering the whole tree.
 
 import { useCallback, useState } from 'react';
 import type { OnLoadData, OnProgressData } from 'react-native-video';
 
 import type { RnvSnapshot } from '../types/types';
+import type { RnvSnapshotRef } from './useRnvPlayerSnapshot';
+
+/** Cold-state slice — only fields that re-render the React tree on change. */
+export type RnvColdState = Omit<RnvSnapshot, 'currentTime' | 'buffering'>;
 
 type Options = {
-  /** Initial volume — passed in so consumer can persist it across mounts. */
+  /** Snapshot ref shared with gestures + scrubber. We mutate hot fields here directly. */
+  snapshot: RnvSnapshotRef;
   initialVolume: number;
-  /** When false, the player starts paused; this seeds `state.isPlaying`. */
   autoPlay: boolean;
-  /** Initial duration from VideoItem metadata before the real onLoad fires. */
   initialDuration: number;
-  /** Called when the file finishes (caller decides whether to loop / show end UI). */
   onEnd: () => void;
 };
 
 export type RnvPlayerEvents = {
-  /** Reactive state snapshot — pass this to skins for rendering. */
-  state: RnvSnapshot;
-  /** Setter to mark `isLoaded: false` etc. when the source changes. */
-  setState: React.Dispatch<React.SetStateAction<RnvSnapshot>>;
-  /** Track-selection setters — wired into SettingsSheet via skin props. */
+  state: RnvColdState;
+  setState: React.Dispatch<React.SetStateAction<RnvColdState>>;
   selectVideoTrack: (index: number | 'auto') => void;
   selectAudioTrack: (index: number | null) => void;
   selectTextTrack: (index: number | null) => void;
-  /** Spread these onto the <Video> component to wire up event handlers. */
   videoEventProps: {
     onLoadStart: () => void;
     onLoad: (data: OnLoadData) => void;
@@ -44,16 +40,15 @@ export type RnvPlayerEvents = {
 };
 
 export function useRnvPlayerEvents({
+  snapshot,
   initialVolume,
   autoPlay,
   initialDuration,
   onEnd,
 }: Options): RnvPlayerEvents {
-  const [state, setState] = useState<RnvSnapshot>({
-    currentTime: 0,
+  const [state, setState] = useState<RnvColdState>({
     duration: initialDuration,
     volume: initialVolume,
-    buffering: false,
     isLoaded: false,
     isPlaying: autoPlay,
     videoTracks: [],
@@ -65,67 +60,100 @@ export function useRnvPlayerEvents({
   });
 
   const handleLoadStart = useCallback(() => {
-    // Useful for diagnostics — not all platforms fire this consistently.
-    // eslint-disable-next-line no-console
-    console.log('[rn-video] onLoadStart');
+    if (__DEV__) console.log('[rn-video] onLoadStart');
   }, []);
 
-  const handleLoad = useCallback((data: OnLoadData) => {
-    // eslint-disable-next-line no-console
-    console.log('[rn-video] onLoad', {
-      duration: data.duration,
-      tracks: data.videoTracks?.length,
-    });
-    setState((s) => ({
-      ...s,
-      duration: data.duration,
-      isLoaded: true,
-      videoTracks: data.videoTracks.map((t) => ({
-        index: t.index,
-        width: t.width,
-        height: t.height,
-        bitrate: t.bitrate,
-      })),
-      audioTracks: data.audioTracks.map((t) => ({
-        index: t.index,
-        title: t.title,
-        language: t.language,
-      })),
-      textTracks: data.textTracks.map((t) => ({
-        index: t.index,
-        title: t.title,
-        language: t.language,
-      })),
-    }));
-  }, []);
+  const handleLoad = useCallback(
+    (data: OnLoadData) => {
+      if (__DEV__) {
+        console.log('[rn-video] onLoad', {
+          duration: data.duration,
+          tracks: data.videoTracks?.length,
+        });
+      }
+      // Sync hot snapshot too so gesture worklets have correct duration.
+      snapshot.current.duration = data.duration;
+      snapshot.current.isLoaded = true;
+      setState((s) => ({
+        ...s,
+        duration: data.duration,
+        isLoaded: true,
+        videoTracks: data.videoTracks.map((t) => ({
+          index: t.index,
+          width: t.width,
+          height: t.height,
+          bitrate: t.bitrate,
+        })),
+        audioTracks: data.audioTracks.map((t) => ({
+          index: t.index,
+          title: t.title,
+          language: t.language,
+        })),
+        textTracks: data.textTracks.map((t) => ({
+          index: t.index,
+          title: t.title,
+          language: t.language,
+        })),
+      }));
+    },
+    [snapshot]
+  );
 
-  const handleProgress = useCallback((data: OnProgressData) => {
-    setState((s) => ({ ...s, currentTime: data.currentTime }));
-  }, []);
+  // Hot field — write directly to ref, NO React re-render.
+  const handleProgress = useCallback(
+    (data: OnProgressData) => {
+      snapshot.current.currentTime = data.currentTime;
+    },
+    [snapshot]
+  );
 
-  const handleBuffer = useCallback(({ isBuffering }: { isBuffering: boolean }) => {
-    setState((s) => ({ ...s, buffering: isBuffering }));
-  }, []);
+  // Hot field — write directly to ref, NO React re-render.
+  const handleBuffer = useCallback(
+    ({ isBuffering }: { isBuffering: boolean }) => {
+      snapshot.current.buffering = isBuffering;
+    },
+    [snapshot]
+  );
 
-  const handlePlaybackStateChanged = useCallback(({ isPlaying }: { isPlaying: boolean }) => {
-    setState((s) => ({ ...s, isPlaying }));
-  }, []);
+  const handlePlaybackStateChanged = useCallback(
+    ({ isPlaying }: { isPlaying: boolean }) => {
+      snapshot.current.isPlaying = isPlaying;
+      setState((s) => ({ ...s, isPlaying }));
+    },
+    [snapshot]
+  );
 
-  const handleVolumeChange = useCallback(({ volume }: { volume: number }) => {
-    setState((s) => ({ ...s, volume }));
-  }, []);
+  const handleVolumeChange = useCallback(
+    ({ volume }: { volume: number }) => {
+      snapshot.current.volume = volume;
+      setState((s) => ({ ...s, volume }));
+    },
+    [snapshot]
+  );
 
-  const selectVideoTrack = useCallback((index: number | 'auto') => {
-    setState((s) => ({ ...s, selectedVideoTrack: index }));
-  }, []);
+  const selectVideoTrack = useCallback(
+    (index: number | 'auto') => {
+      snapshot.current.selectedVideoTrack = index;
+      setState((s) => ({ ...s, selectedVideoTrack: index }));
+    },
+    [snapshot]
+  );
 
-  const selectAudioTrack = useCallback((index: number | null) => {
-    setState((s) => ({ ...s, selectedAudioTrack: index }));
-  }, []);
+  const selectAudioTrack = useCallback(
+    (index: number | null) => {
+      snapshot.current.selectedAudioTrack = index;
+      setState((s) => ({ ...s, selectedAudioTrack: index }));
+    },
+    [snapshot]
+  );
 
-  const selectTextTrack = useCallback((index: number | null) => {
-    setState((s) => ({ ...s, selectedTextTrack: index }));
-  }, []);
+  const selectTextTrack = useCallback(
+    (index: number | null) => {
+      snapshot.current.selectedTextTrack = index;
+      setState((s) => ({ ...s, selectedTextTrack: index }));
+    },
+    [snapshot]
+  );
 
   return {
     state,
