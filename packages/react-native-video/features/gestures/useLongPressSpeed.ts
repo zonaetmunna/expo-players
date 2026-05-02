@@ -19,14 +19,23 @@ export function useLongPressSpeed({
   const optsRef = useRef({ setRate, boostedRate, onChange });
   optsRef.current = { setRate, boostedRate, onChange };
 
+  // Tracks whether THIS specific long-press boost is currently active.
+  // onFinalize fires for every gesture lifecycle (including taps that never
+  // triggered onStart) and on remount — without this guard we'd reset the
+  // rate on every tap, ad event, or fullscreen toggle.
+  const boostedRef = useRef(false);
+
   return useMemo(() => {
     const start = () => {
       const o = optsRef.current;
+      boostedRef.current = true;
       o.setRate(o.boostedRate);
       o.onChange?.(true);
     };
     const stop = () => {
+      if (!boostedRef.current) return; // never started → nothing to stop
       const o = optsRef.current;
+      boostedRef.current = false;
       o.setRate(1);
       o.onChange?.(false);
     };

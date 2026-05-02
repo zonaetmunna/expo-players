@@ -118,7 +118,7 @@ export function useRnvPlayerEvents({
   const handlePlaybackStateChanged = useCallback(
     ({ isPlaying }: { isPlaying: boolean }) => {
       snapshot.current.isPlaying = isPlaying;
-      setState((s) => ({ ...s, isPlaying }));
+      setState((s) => (s.isPlaying === isPlaying ? s : { ...s, isPlaying }));
     },
     [snapshot]
   );

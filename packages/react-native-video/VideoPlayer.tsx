@@ -256,14 +256,23 @@ export function VideoPlayer({
 
   // Reset transient state on source change. sourceId is read in the body so
   // exhaustive-deps sees it as the real trigger.
+  // We deliberately depend ONLY on sourceId. errorMgr / ads come from hooks
+  // whose memoized return identity changes when their internal state changes
+  // (e.g. every ad event mutates `ads`). Including them in the deps would
+  // make this effect re-fire on every ad event, causing a state-churn storm.
+  // We capture the latest references via a ref so the closure stays current
+  // without participating in the dep array.
+  const resetRefsRef = useRef({ clearError: errorMgr.clearError, resetAds: ads.reset });
+  resetRefsRef.current = { clearError: errorMgr.clearError, resetAds: ads.reset };
+
   const sourceId = source.id;
   useEffect(() => {
     if (__DEV__) console.log('[rn-video] reset for source', sourceId);
     setIsEnded(false);
-    errorMgr.clearError();
+    resetRefsRef.current.clearError();
     setRate(1);
-    ads.reset();
-  }, [sourceId, errorMgr, ads]);
+    resetRefsRef.current.resetAds();
+  }, [sourceId]);
 
   // Imperative actions — routed to cast session when active, else local.
   const seekTo = useCallback(
