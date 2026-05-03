@@ -20,18 +20,18 @@
 //     <Button onPress={() => downloadVideo(video)}>Download</Button>
 //   }
 
+export { isDownloadable } from './isDownloadable';
 export {
   cancelDownload,
+  type DownloadInput,
+  type DownloadState,
+  type DownloadStatus,
   deleteDownload,
   downloadVideo,
   getLocalUri,
   getStatus,
   hydrate,
-  type DownloadInput,
-  type DownloadState,
-  type DownloadStatus,
 } from './manager';
-export { isDownloadable } from './isDownloadable';
 export {
   type DownloadRecord,
   totalDiskUsage,

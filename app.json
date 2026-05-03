@@ -37,7 +37,8 @@
         }
       ],
       "expo-secure-store",
-      "expo-sqlite"
+      "expo-sqlite",
+      "./plugins/withPipConfigChanges"
     ],
     "experiments": {
       "typedRoutes": true,

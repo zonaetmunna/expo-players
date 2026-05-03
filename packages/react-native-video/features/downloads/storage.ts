@@ -1,21 +1,30 @@
 // Storage layer for downloaded videos. Owns:
-//   - file paths (documentDirectory/rnv-downloads/<id>.mp4)
+//   - paths (per-video file for MP4, per-video directory for HLS/DASH)
 //   - registry index in AsyncStorage (which IDs are downloaded + metadata)
 //
+// Layout under documentDirectory/rnv-downloads/:
+//   - MP4:  <id>.mp4                                     (single file)
+//   - HLS:  <id>/index.m3u8 + segments + key.bin         (directory)
+//   - DASH: <id>/index.mpd  + init.mp4 + .m4s segments   (directory)
+//
 // Files live in the app's private documents directory — sandboxed, not
-// visible in the device gallery, deleted on app uninstall. This matches the
+// visible in the device gallery, deleted on app uninstall. Matches the
 // YouTube/Netflix offline-download pattern.
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
+
+import type { SideLoadedSubtitle } from '../../types/types';
 
 /** Per-download record kept in AsyncStorage. */
 export type DownloadRecord = {
   id: string;
   /** Original remote URL the file was downloaded from. */
   remoteUri: string;
-  /** Local file:// path on this device. */
+  /** Local URI to play — for MP4 it's the .mp4 file, for HLS it's the local index.m3u8. */
   localUri: string;
+  /** Whether the download is a single file or a directory tree (HLS/DASH). Drives delete logic. */
+  kind: 'file' | 'hls' | 'dash';
   /** Bytes on disk. */
   sizeBytes: number;
   /** Wall-clock timestamp of when the download finished. */
@@ -25,15 +34,45 @@ export type DownloadRecord = {
   title?: string;
   poster?: string;
   durationSec?: number;
+  /** Locally-cached sidecar subtitles. Each `uri` points at a file:// path.
+   *  Empty/undefined when the source had no subtitles or download failed. */
+  subtitles?: SideLoadedSubtitle[];
 };
 
 const REGISTRY_KEY = '@rnv/downloads/registry';
 const DOWNLOADS_DIR = `${FileSystem.documentDirectory ?? ''}rnv-downloads/`;
 
-/** Local file path for a given video id. Extension is hard-coded mp4 for now
- *  (Round 1 supports MP4 only — HLS/DASH downloads need a different scheme). */
+/** Single-file path used by MP4-style downloads. */
 export function localPathFor(videoId: string): string {
   return `${DOWNLOADS_DIR}${videoId}.mp4`;
+}
+
+/** Per-video directory used by HLS downloads (segments + index.m3u8 + key live here). */
+export function hlsDirFor(videoId: string): string {
+  return `${DOWNLOADS_DIR}${videoId}`;
+}
+
+/** Per-video directory used by DASH downloads (segments + index.mpd + init.mp4 live here). */
+export function dashDirFor(videoId: string): string {
+  return `${DOWNLOADS_DIR}${videoId}`;
+}
+
+/** Path of the rewritten local m3u8 inside the HLS dir. The HLS downloader
+ *  always writes its rewritten playlist as `index.m3u8`. */
+export function hlsPlaylistPathFor(videoId: string): string {
+  return `${hlsDirFor(videoId)}/index.m3u8`;
+}
+
+/** Path of the rewritten local MPD inside the DASH dir. */
+export function dashManifestPathFor(videoId: string): string {
+  return `${dashDirFor(videoId)}/index.mpd`;
+}
+
+/** Per-video directory used to hold downloaded sidecar subtitle files.
+ *  Separate from the video dir so MP4 (single-file) downloads can also have
+ *  subtitles without forcing a directory layout for the video itself. */
+export function subtitleDirFor(videoId: string): string {
+  return `${DOWNLOADS_DIR}${videoId}-subs`;
 }
 
 /** Ensure the downloads directory exists. Cheap to call repeatedly. */
@@ -80,7 +119,9 @@ export async function upsertRecord(record: DownloadRecord): Promise<void> {
   await writeRegistry(registry);
 }
 
-/** Remove the record AND the file. Idempotent. */
+/** Remove the record AND the on-disk content. Idempotent.
+ *  For MP4: delete the single file. For HLS/DASH: delete the entire directory
+ *  (which removes the manifest, all segments, init/key files in one shot). */
 export async function deleteRecord(videoId: string): Promise<void> {
   const registry = await readRegistry();
   const record = registry[videoId];
@@ -88,9 +129,22 @@ export async function deleteRecord(videoId: string): Promise<void> {
   await writeRegistry(registry);
   if (record) {
     try {
-      await FileSystem.deleteAsync(record.localUri, { idempotent: true });
+      const target =
+        record.kind === 'hls'
+          ? hlsDirFor(videoId)
+          : record.kind === 'dash'
+            ? dashDirFor(videoId)
+            : record.localUri;
+      await FileSystem.deleteAsync(target, { idempotent: true });
     } catch {
-      // ignore — file may already be gone
+      // ignore — already gone
+    }
+    // Always try to clean the subtitle dir too — exists only when subtitles
+    // were downloaded, idempotent: true makes the no-such-dir case a no-op.
+    try {
+      await FileSystem.deleteAsync(subtitleDirFor(videoId), { idempotent: true });
+    } catch {
+      // ignore
     }
   }
 }

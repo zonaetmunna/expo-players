@@ -15,6 +15,7 @@ export const VIDEO_CATEGORIES: readonly Chip<VideoCategoryKey>[] = [
   { key: 'drm', label: 'DRM', icon: 'lock-closed-outline' },
   { key: 'ads', label: 'IMA Ads', icon: 'megaphone-outline' },
   { key: 'codec-test', label: 'Codecs / HDR', icon: 'sparkles-outline' },
+  { key: 'platforms', label: 'Platforms / CDNs', icon: 'cloud-circle-outline' },
   { key: 'edge-case', label: 'Edge cases', icon: 'warning-outline' },
 ] as const;
 

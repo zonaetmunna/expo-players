@@ -6,6 +6,7 @@ import { useColorScheme } from '@/lib/useColorScheme';
 
 import { useBuffering } from '../../core/useSnapshotField';
 import { CastButton } from '../cast/bridges/castBridge';
+import { DownloadButton } from './DownloadButton';
 import { SettingsSheet } from './SettingsSheet';
 import { SkinScrubber } from './SkinScrubber';
 import type { SkinProps } from './types';
@@ -138,32 +139,12 @@ export function DefaultSkin(props: SkinProps) {
                 </View>
               ) : null}
               {canDownload ? (
-                <Pressable
+                <DownloadButton
+                  state={downloadState}
+                  progress={downloadProgress}
+                  accentColor={accentColor}
                   onPress={onToggleDownload}
-                  hitSlop={8}
-                  style={styles.iconBtn}
-                  accessibilityRole="button"
-                  accessibilityLabel={
-                    downloadState === 'done'
-                      ? 'Delete downloaded video'
-                      : downloadState === 'downloading'
-                        ? 'Cancel download'
-                        : 'Download for offline'
-                  }>
-                  <Ionicons
-                    name={
-                      downloadState === 'done'
-                        ? 'checkmark-circle'
-                        : downloadState === 'downloading'
-                          ? 'close-circle-outline'
-                          : downloadState === 'error'
-                            ? 'alert-circle-outline'
-                            : 'cloud-download-outline'
-                    }
-                    size={20}
-                    color={downloadState === 'done' ? accentColor : '#fff'}
-                  />
-                </Pressable>
+                />
               ) : null}
               <Pressable
                 onPress={() => {

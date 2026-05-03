@@ -4,14 +4,6 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Video, { type ISO639_1, type TextTrackType, type VideoRef } from 'react-native-video';
 import {
-  cancelDownload,
-  type DownloadState,
-  deleteDownload,
-  downloadVideo,
-  isDownloadable,
-  useDownloadStatus,
-} from './core/downloads';
-import {
   mapAudioTrackSelection,
   mapResizeMode,
   mapTextTrackSelection,
@@ -27,6 +19,14 @@ import { isAdsPlatformSupported, mapAds, validateAds } from './features/ads/ads'
 import { useAdLifecycle } from './features/ads/useAdLifecycle';
 import { CastIndicator } from './features/cast/CastIndicator';
 import { useCastSession } from './features/cast/useCastSession';
+import {
+  cancelDownload,
+  type DownloadState,
+  deleteDownload,
+  downloadVideo,
+  isDownloadable,
+  useDownloadStatus,
+} from './features/downloads';
 import { isDrmSchemeSupported, mapDrm, validateDrm } from './features/drm/drm';
 import { PlayerGestures } from './features/gestures/PlayerGestures';
 import type { SkinId } from './features/skins';
@@ -262,8 +262,14 @@ export function VideoPlayer({
   // make this effect re-fire on every ad event, causing a state-churn storm.
   // We capture the latest references via a ref so the closure stays current
   // without participating in the dep array.
-  const resetRefsRef = useRef({ clearError: errorMgr.clearError, resetAds: ads.reset });
-  resetRefsRef.current = { clearError: errorMgr.clearError, resetAds: ads.reset };
+  const resetRefsRef = useRef({
+    clearError: errorMgr.clearError,
+    resetAds: ads.reset,
+  });
+  resetRefsRef.current = {
+    clearError: errorMgr.clearError,
+    resetAds: ads.reset,
+  };
 
   const sourceId = source.id;
   useEffect(() => {
@@ -339,16 +345,31 @@ export function VideoPlayer({
       downloadVideo({
         id: source.id,
         uri: source.uri,
+        // Tells the manager which downloader to use. HLS / DASH sources need
+        // the segmented downloader (manifest + segments + manifest rewrite);
+        // everything else (mp4/webm/ogg) is a single-file resumable.
+        kind: source.type === 'hls' ? 'hls' : source.type === 'dash' ? 'dash' : 'file',
         title: source.title,
         poster: source.poster,
         durationSec: source.duration,
+        // Sidecar subtitles travel with the video so they work offline too.
+        subtitles: source.subtitles,
       });
     } else if (state === 'downloading') {
       cancelDownload(source.id);
     } else if (state === 'done') {
       deleteDownload(source.id);
     }
-  }, [downloadStatus.state, source.id, source.uri, source.title, source.poster, source.duration]);
+  }, [
+    downloadStatus.state,
+    source.id,
+    source.uri,
+    source.type,
+    source.title,
+    source.poster,
+    source.duration,
+    source.subtitles,
+  ]);
 
   const handleToggleFullscreen = useCallback(async () => {
     if (!isLiveForResume) {
@@ -378,8 +399,19 @@ export function VideoPlayer({
       downloadStatus.state === 'done' && downloadStatus.localUri
         ? downloadStatus.localUri
         : source.uri;
+    // ExoPlayer/AVPlayer can't sniff the protocol from a file:// URL the way
+    // they do for https:// (no Content-Type header, and local m3u8 was
+    // landing in the progressive extractor path). Pass the type hint so the
+    // native player picks HlsMediaSource / DashMediaSource explicitly.
+    const typeHint =
+      source.type === 'hls' || effectiveUri.endsWith('.m3u8')
+        ? 'm3u8'
+        : source.type === 'dash' || effectiveUri.endsWith('.mpd')
+          ? 'mpd'
+          : undefined;
     return {
       uri: effectiveUri,
+      type: typeHint,
       headers: source.drm?.headers,
       drm: mapDrm(source.drm),
       ad: mappedAd,
@@ -388,7 +420,15 @@ export function VideoPlayer({
         description: source.description,
         imageUri: source.poster,
       },
-      textTracks: source.subtitles?.map((s) => ({
+      // Prefer locally-cached subtitles when the video has been downloaded —
+      // otherwise an offline user gets a working video but missing captions.
+      // Falls back to the remote source.subtitles when no local copy exists
+      // (download failed mid-subtitle-fetch, or the user is online with no
+      // download).
+      textTracks: (downloadStatus.state === 'done' && downloadStatus.subtitles
+        ? downloadStatus.subtitles
+        : source.subtitles
+      )?.map((s) => ({
         title: s.title,
         language: s.language as ISO639_1,
         type:
@@ -402,6 +442,7 @@ export function VideoPlayer({
     };
   }, [
     source.uri,
+    source.type,
     source.drm,
     source.ads,
     source.subtitles,
@@ -410,6 +451,7 @@ export function VideoPlayer({
     source.poster,
     downloadStatus.state,
     downloadStatus.localUri,
+    downloadStatus.subtitles,
   ]);
 
   // Memoize enum mapper outputs so they don't allocate fresh objects every

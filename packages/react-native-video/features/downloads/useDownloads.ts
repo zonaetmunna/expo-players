@@ -4,13 +4,7 @@
 
 import { useEffect, useState } from 'react';
 
-import {
-  type DownloadStatus,
-  getStatus,
-  hydrate,
-  subscribe,
-  subscribeAll,
-} from './manager';
+import { type DownloadStatus, getStatus, hydrate, subscribe, subscribeAll } from './manager';
 import { type DownloadRecord, readRegistry } from './storage';
 
 /**

@@ -5,6 +5,7 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import { useBuffering } from '../../core/useSnapshotField';
 import { CastButton } from '../cast/bridges/castBridge';
+import { DownloadButton } from './DownloadButton';
 import { SettingsSheet } from './SettingsSheet';
 import { SkinScrubber } from './SkinScrubber';
 import type { SkinProps } from './types';
@@ -38,6 +39,7 @@ export function NetflixSkin(props: SkinProps) {
     canCast = false,
     canDownload = false,
     downloadState = 'idle',
+    downloadProgress,
     onToggleDownload,
     skin,
     onSetRate,
@@ -139,32 +141,14 @@ export function NetflixSkin(props: SkinProps) {
                   </View>
                 ) : null}
                 {canDownload ? (
-                  <Pressable
+                  <DownloadButton
+                    state={downloadState}
+                    progress={downloadProgress}
+                    accentColor={NETFLIX_RED}
+                    iconSize={22}
+                    size={38}
                     onPress={onToggleDownload}
-                    hitSlop={8}
-                    style={styles.iconBtn}
-                    accessibilityRole="button"
-                    accessibilityLabel={
-                      downloadState === 'done'
-                        ? 'Delete downloaded video'
-                        : downloadState === 'downloading'
-                          ? 'Cancel download'
-                          : 'Download for offline'
-                    }>
-                    <Ionicons
-                      name={
-                        downloadState === 'done'
-                          ? 'checkmark-circle'
-                          : downloadState === 'downloading'
-                            ? 'close-circle-outline'
-                            : downloadState === 'error'
-                              ? 'alert-circle-outline'
-                              : 'cloud-download-outline'
-                      }
-                      size={22}
-                      color={downloadState === 'done' ? NETFLIX_RED : '#fff'}
-                    />
-                  </Pressable>
+                  />
                 ) : null}
               </View>
             </View>

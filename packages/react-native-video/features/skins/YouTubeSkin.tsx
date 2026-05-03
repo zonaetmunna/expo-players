@@ -8,6 +8,7 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import { useBuffering } from '../../core/useSnapshotField';
 import { CastButton } from '../cast/bridges/castBridge';
+import { DownloadButton } from './DownloadButton';
 import { SettingsSheet } from './SettingsSheet';
 import { SkinScrubber } from './SkinScrubber';
 import type { SkinProps } from './types';
@@ -41,6 +42,7 @@ export function YouTubeSkin(props: SkinProps) {
     canCast = false,
     canDownload = false,
     downloadState = 'idle',
+    downloadProgress,
     onToggleDownload,
     skin,
     onSetRate,
@@ -134,32 +136,12 @@ export function YouTubeSkin(props: SkinProps) {
                 </Pressable>
               ) : null}
               {canDownload ? (
-                <Pressable
+                <DownloadButton
+                  state={downloadState}
+                  progress={downloadProgress}
+                  accentColor={YT_RED}
                   onPress={onToggleDownload}
-                  hitSlop={8}
-                  style={styles.iconBtn}
-                  accessibilityRole="button"
-                  accessibilityLabel={
-                    downloadState === 'done'
-                      ? 'Delete downloaded video'
-                      : downloadState === 'downloading'
-                        ? 'Cancel download'
-                        : 'Download for offline'
-                  }>
-                  <Ionicons
-                    name={
-                      downloadState === 'done'
-                        ? 'checkmark-circle'
-                        : downloadState === 'downloading'
-                          ? 'close-circle-outline'
-                          : downloadState === 'error'
-                            ? 'alert-circle-outline'
-                            : 'cloud-download-outline'
-                    }
-                    size={20}
-                    color={downloadState === 'done' ? YT_RED : '#fff'}
-                  />
-                </Pressable>
+                />
               ) : null}
               <Pressable
                 onPress={() => {

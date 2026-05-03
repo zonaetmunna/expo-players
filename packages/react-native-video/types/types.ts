@@ -10,7 +10,8 @@ export type VideoCategory =
   | 'drm'
   | 'ads'
   | 'codec-test'
-  | 'edge-case';
+  | 'edge-case'
+  | 'platforms';
 
 export type VideoCodec = 'h264' | 'h265' | 'vp9' | 'vp8' | 'av1' | 'theora';
 export type AudioCodec = 'aac' | 'mp3' | 'opus' | 'vorbis' | 'ac3' | 'eac3';
